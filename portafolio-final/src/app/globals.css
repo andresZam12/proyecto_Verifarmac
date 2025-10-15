@@ -1,0 +1,186 @@
+/* ==== Tailwind v4 ==== */
+@import "tailwindcss";
+
+/* === Paleta y tokens (equivalentes al extend del config) === */
+@theme {
+  --color-primary:    #1E90FF;   /* azul botón */
+  --color-accent:     #FFD700;   /* amarillo texto botón */
+  --color-brown:      #8B4513;   /* botón secundario café */
+  --color-indigoDark: #1D1B4E;   /* cartuchos/títulos */
+  --color-bgDark:     #071724;   /* fondo global */
+  --color-panel:      #0b2332;   /* tarjetas/panel */
+}
+
+/* ===== Global ===== */
+html { scroll-behavior: smooth; }
+body { @apply bg-bgDark text-white; }
+
+/* ===== Componentes “pixel” reutilizables ===== */
+
+/* Botón principal retro (azul + amarillo) */
+.btn-pixel {
+  @apply inline-flex items-center justify-center px-6 py-3 font-bold uppercase tracking-wide;
+  @apply bg-primary text-accent border-4 border-black rounded-none;
+  box-shadow: 0 6px 0 #000;
+}
+.btn-pixel:active { transform: translateY(2px); box-shadow: 0 4px 0 #000; }
+
+/* Botón secundario (café) */
+.btn-brown {
+  @apply inline-flex items-center justify-center px-6 py-3 font-bold uppercase tracking-wide;
+  @apply bg-brown text-white border-4 border-black rounded-none;
+  box-shadow: 0 6px 0 #000;
+}
+.btn-brown:active { transform: translateY(2px); box-shadow: 0 4px 0 #000; }
+
+/* Tarjeta retro */
+.pixel-card {
+  @apply border-4 border-black bg-panel rounded-none p-4;
+  box-shadow: 0 6px 0 #000;
+}
+
+/* Título de sección tipo cartucho */
+.section-title {
+  @apply inline-block px-6 py-3 bg-indigoDark text-accent border-4 border-black rounded-none font-bold;
+  box-shadow: 0 6px 0 #000;
+}
+
+/* Barras de progreso */
+.bar-wrap  { @apply border-4 border-black bg-indigoDark rounded-none p-1; }
+.bar-fill  { @apply h-4; }
+
+/* Espaciado contenedor de sección */
+.section { @apply max-w-6xl mx-auto px-4 py-16; }
+
+/* ==== Animaciones avatar ==== */
+@keyframes bob {
+  0%   { transform: translateY(0) }
+  50%  { transform: translateY(-6px) }
+  100% { transform: translateY(0) }
+}
+
+@keyframes shadowPulse {
+  0%   { transform: scale(1); opacity: .45 }
+  50%  { transform: scale(1.06); opacity: .35 }
+  100% { transform: scale(1); opacity: .45 }
+}
+
+/* Utilidades simples */
+.animate-bob { animation: bob 1.8s ease-in-out infinite; }
+.animate-shadow { animation: shadowPulse 1.8s ease-in-out infinite; }
+
+/* ===== Animación para el cartel del nombre ===== */
+@keyframes nameBob {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+.animate-name-bob {
+  animation: nameBob 2.2s ease-in-out infinite;
+}
+
+/* ===== Animación para la sombra del cartel ===== */
+@keyframes nameShadow {
+  0%   { transform: translateY(0) scale(1);   opacity: .35; }
+  50%  { transform: translateY(6px) scale(.92); opacity: .5; }
+  100% { transform: translateY(0) scale(1);   opacity: .35; }
+}
+.animate-name-shadow {
+  animation: nameShadow 2.2s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-bob { animation: bob 1.2s ease-in-out infinite; }
+
+/* ===== Animaciones reutilizables ===== */
+@keyframes bob {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+.animate-bob { animation: bob 1.6s ease-in-out infinite; }
+
+/* Píxeles nítidos en imágenes */
+.pixelated { image-rendering: pixelated; }
+
+/* === MAPA A PANTALLA COMPLETA === */
+.map-wrap {
+  position: relative;
+  height: 100vh;        /* ocupa toda la ventana */
+  width: 100vw;
+  overflow: hidden;     /* nada fuera del marco */
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain; /* muestra el mapa completo */
+}
+
+/* Contenedor donde se mueven elementos sobre el mapa */
+.map-stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* === AVATAR: fallback (idle) con imagen normal === */
+.avatar-idle {
+  animation: idleBob 1.4s ease-in-out infinite;
+  image-rendering: pixelated;
+}
+
+@keyframes idleBob {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+/* === AVATAR: spritesheet (si existe) === */
+.avatar-sprite {
+  width: var(--frame, 64px);
+  height: var(--frame, 64px);
+  background-image: var(--sheet);
+  background-repeat: no-repeat;
+  background-size: calc(var(--cols, 4) * 100%) calc(var(--rows, 4) * 100%);
+  image-rendering: pixelated;
+}
+
+/* Avanza columnas (frames) en pasos) */
+.walk-anim {
+  animation: walkSteps 600ms steps(var(--cols, 4)) infinite;
+}
+
+@keyframes walkSteps {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 100%; }
+}
+
+/* Dirección = fila del spritesheet */
+.dir-up    { background-position-y: calc(0%); }               /* fila 0 */
+.dir-right { background-position-y: calc(100% / var(--rows) * 1); }
+.dir-down  { background-position-y: calc(100% / var(--rows) * 2); }
+.dir-left  { background-position-y: calc(100% / var(--rows) * 3); }
+
+/* Interrogación roja flotando */
+.help-float {
+  animation: helpBob 1.6s ease-in-out infinite;
+  image-rendering: pixelated;
+}
+
+@keyframes helpBob {
+  0%   { transform: translateY(0);    }
+  50%  { transform: translateY(-10px);}
+  100% { transform: translateY(0);    }
+}
+
+/* Botón “Volver” tipo pixel */
+.btn-pixel {
+  background:#2b93ff; color:#ffd54a;
+  border:8px solid #000; border-radius:6px;
+  box-shadow:0 10px 0 #000;
+  font-family:"PressStart", monospace;
+  font-size:14px; padding:10px 14px;
+  image-rendering: pixelated;
+}
+
+
