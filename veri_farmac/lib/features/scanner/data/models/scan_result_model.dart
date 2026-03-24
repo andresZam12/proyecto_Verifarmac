@@ -1,6 +1,3 @@
-// Modelo de ScanResult con serialización JSON.
-// TODO: implementar fromJson y toJson, extender ScanResult
-
 import '../../domain/entities/scan_result.dart';
 
 // Extiende ScanResult y agrega conversión desde/hacia JSON.
