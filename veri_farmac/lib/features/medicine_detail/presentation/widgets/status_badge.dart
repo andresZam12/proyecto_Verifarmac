@@ -1,2 +1,7 @@
 // Badge visual con el estado del medicamento (Vigente, Vencido, etc.).
-// TODO: implementar con color semántico según MedicineStatus
+
+// Pequeño — para listas e historial
+StatusBadge(estado: EstadoMedicamento.vigente)
+
+// Grande — para la pantalla de resultado
+StatusBadge(estado: EstadoMedicamento.vencido, grande: true)
