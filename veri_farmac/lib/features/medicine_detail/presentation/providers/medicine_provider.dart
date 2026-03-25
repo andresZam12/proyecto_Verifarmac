@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/invima_mock_datasource.dart';
 import '../../data/repositories/medicine_repository_impl.dart';
-import '../../data/repositories/medicine_repository_impl.dart';
 import '../../domain/entities/medicine.dart';
-import '../../data/repositories/medicine_repository_impl.dart';
 import '../../domain/usecases/get_medicine_usecase.dart';
 
 enum EstadoMedicina { inicial, cargando, cargado, noEncontrado, error }
