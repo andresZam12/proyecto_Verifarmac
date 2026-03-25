@@ -56,7 +56,7 @@ class AppTheme {
     ),
 
     // Tarjetas con borde sutil
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.superficieClara,
       shape: RoundedRectangleBorder(
@@ -96,7 +96,7 @@ class AppTheme {
       foregroundColor: AppColors.primaryLight,
     ),
 
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.superficieOscura,
       shape: RoundedRectangleBorder(

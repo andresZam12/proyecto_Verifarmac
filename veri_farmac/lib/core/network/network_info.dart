@@ -1,22 +1,16 @@
-// Verifica si hay conexión a internet.
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:injectable/injectable.dart';
 
-// Verifica si el dispositivo tiene conexión activa.
-// Se usa antes de hacer llamadas a la API.
 abstract class INetworkInfo {
-  Future<bool> get isConnected;
+  Future<bool> get estaConectado;
 }
 
-@LazySingleton(as: INetworkInfo)
 class NetworkInfo implements INetworkInfo {
   const NetworkInfo(this._connectivity);
   final Connectivity _connectivity;
 
   @override
-  Future<bool> get isConnected async {
-    final resultado = await _connectivity.checkConnectivity();
-    // Hay conexión si no está en modo "none"
-    return resultado != ConnectivityResult.none;
+  Future<bool> get estaConectado async {
+    final result = await _connectivity.checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 }

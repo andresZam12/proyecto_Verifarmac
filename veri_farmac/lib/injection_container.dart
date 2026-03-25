@@ -22,6 +22,7 @@ import 'features/scanner/domain/repositories/i_scanner_repository.dart';
 
 import 'features/medicine_detail/data/datasources/invima_mock_datasource.dart';
 import 'features/medicine_detail/data/repositories/medicine_repository_impl.dart';
+import 'features/medicine_detail/data/repositories/medicine_repository_impl.dart';
 import 'features/medicine_detail/domain/repositories/i_medicine_repository.dart';
 
 import 'features/history/data/datasources/history_local_datasource.dart';

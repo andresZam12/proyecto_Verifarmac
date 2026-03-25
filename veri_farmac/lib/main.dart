@@ -1,5 +1,6 @@
 // Punto de entrada de la aplicación.
 import 'package:flutter/material.dart';
+import 'injection_container.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +20,8 @@ void main() async {
     url: 'TU_SUPABASE_URL',       // reemplazar con tu URL de Supabase
     anonKey: 'TU_SUPABASE_ANON_KEY', // reemplazar con tu anon key
   );
-
+  await configurarDependencias();
+  
   // Carga las preferencias guardadas (tema e idioma)
   final prefs = await SharedPreferences.getInstance();
 
