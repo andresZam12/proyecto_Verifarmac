@@ -1,6 +1,3 @@
-// Inyección de dependencias con get_it + injectable.
-// TODO: configurar get_it y registrar dependencias
-
 import 'package:get_it/get_it.dart';
 
 import 'core/network/dio_client.dart';

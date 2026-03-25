@@ -1,5 +1,3 @@
-// Estado del medicamento actual con Riverpod.
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/invima_mock_datasource.dart';
