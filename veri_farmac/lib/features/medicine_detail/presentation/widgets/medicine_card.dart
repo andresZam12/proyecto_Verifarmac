@@ -96,7 +96,7 @@ class _InfoRow extends StatelessWidget {
         Icon(
           icono,
           size: 14,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 6),
         Expanded(
@@ -106,7 +106,7 @@ class _InfoRow extends StatelessWidget {
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withOpacity(0.6),
+                      .withValues(alpha: 0.6),
                 ),
             overflow: TextOverflow.ellipsis,
           ),

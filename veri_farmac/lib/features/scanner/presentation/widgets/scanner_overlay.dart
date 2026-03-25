@@ -45,7 +45,7 @@ class ScannerOverlay extends StatelessWidget {
 class _OverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final pinturaNegra = Paint()..color = Colors.black.withOpacity(0.6);
+    final pinturaNegra = Paint()..color = Colors.black.withValues(alpha: 0.6);
 
     // Área de escaneo — rectángulo centrado
     final ancho  = size.width * 0.75;

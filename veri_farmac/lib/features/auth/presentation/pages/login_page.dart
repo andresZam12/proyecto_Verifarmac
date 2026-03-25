@@ -31,7 +31,7 @@ class LoginPage extends ConsumerWidget {
               Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(Icons.medication_rounded, size: 44, color: AppColors.primary),
@@ -43,7 +43,7 @@ class LoginPage extends ConsumerWidget {
               Text('Inicia sesión para verificar\ntus medicamentos',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
               const SizedBox(height: 48),
               GoogleSignInButton(
                 estaCargando: estaCargando,

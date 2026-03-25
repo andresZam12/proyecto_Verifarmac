@@ -34,7 +34,7 @@ class HistoryEntryTile extends StatelessWidget {
         entrada.creadoEn.fechaRelativa,
         style: TextStyle(
           fontSize: 12,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
       ),
       trailing: Row(
@@ -72,7 +72,7 @@ class _IconoMetodo extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icono, size: 20,

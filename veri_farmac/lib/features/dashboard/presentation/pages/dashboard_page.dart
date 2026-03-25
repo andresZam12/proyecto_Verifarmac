@@ -61,13 +61,13 @@ class _TarjetaEstado extends StatelessWidget {
     return Expanded(child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(children: [
         Text('$cantidad', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: color)),
-        Text(etiqueta,    style: TextStyle(fontSize: 11, color: color.withOpacity(0.8))),
+        Text(etiqueta,    style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8))),
       ]),
     ));
   }

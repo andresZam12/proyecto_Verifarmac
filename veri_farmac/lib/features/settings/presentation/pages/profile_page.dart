@@ -30,7 +30,7 @@ class ProfilePage extends ConsumerWidget {
             // Avatar
             CircleAvatar(
               radius: 48,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               backgroundImage: avatar != null ? NetworkImage(avatar) : null,
               child: avatar == null
                   ? Text(
@@ -63,7 +63,7 @@ class ProfilePage extends ConsumerWidget {
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                   ),
             ),
 

@@ -71,10 +71,10 @@ class _OpcionIdioma extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado ? AppColors.primary : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+            color: seleccionado ? AppColors.primary : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
             width: seleccionado ? 2 : 0.5,
           ),
-          color: seleccionado ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+          color: seleccionado ? AppColors.primary.withValues(alpha: 0.05) : Colors.transparent,
         ),
         child: Row(children: [
           Text(bandera, style: const TextStyle(fontSize: 28)),

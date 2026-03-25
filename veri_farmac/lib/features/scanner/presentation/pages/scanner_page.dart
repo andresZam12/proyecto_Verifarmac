@@ -50,7 +50,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
         Positioned(top: 16, left: 0, right: 0,
           child: Center(child: ScanModeToggle(modoActual: _modo, alCambiar: (modo) => setState(() => _modo = modo)))),
         if (scannerState.estado == EstadoScanner.analizando)
-          Container(color: Colors.black.withOpacity(0.5), child: const AppLoading(mensaje: 'Analizando...')),
+          Container(color: Colors.black.withValues(alpha: 0.5), child: const AppLoading(mensaje: 'Analizando...')),
         if (scannerState.estado == EstadoScanner.error)
           Positioned(bottom: 40, left: 24, right: 24,
             child: Container(

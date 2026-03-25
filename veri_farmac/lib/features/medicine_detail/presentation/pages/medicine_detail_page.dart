@@ -119,7 +119,7 @@ class _FilaInfo extends StatelessWidget {
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(width: 130,
           child: Text(etiqueta, style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)))),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)))),
         Expanded(child: Text(valor, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500))),
       ]),
     );

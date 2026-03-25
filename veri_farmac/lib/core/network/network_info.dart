@@ -11,6 +11,6 @@ class NetworkInfo implements INetworkInfo {
   @override
   Future<bool> get estaConectado async {
     final result = await _connectivity.checkConnectivity();
-    return result != ConnectivityResult.none;
+    return !result.contains(ConnectivityResult.none);
   }
 }

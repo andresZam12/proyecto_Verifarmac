@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _conectividadProvider = StreamProvider<bool>((ref) {
   return Connectivity().onConnectivityChanged.map(
-    (result) => result != ConnectivityResult.none,
+    (result) => !result.contains(ConnectivityResult.none),
   );
 });
 

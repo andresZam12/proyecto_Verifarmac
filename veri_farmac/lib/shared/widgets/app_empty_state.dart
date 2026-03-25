@@ -29,7 +29,7 @@ class AppEmptyState extends StatelessWidget {
             Icon(
               Icons.inbox_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -45,7 +45,7 @@ class AppEmptyState extends StatelessWidget {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                     ),
                 textAlign: TextAlign.center,
               ),

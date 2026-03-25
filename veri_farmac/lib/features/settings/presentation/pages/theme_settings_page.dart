@@ -49,11 +49,11 @@ class ThemeSettingsPage extends ConsumerWidget {
                           : Theme.of(context)
                               .colorScheme
                               .outline
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                       width: seleccionado ? 2 : 0.5,
                     ),
                     color: seleccionado
-                        ? AppColors.primary.withOpacity(0.05)
+                        ? AppColors.primary.withValues(alpha: 0.05)
                         : Colors.transparent,
                   ),
                   child: Row(

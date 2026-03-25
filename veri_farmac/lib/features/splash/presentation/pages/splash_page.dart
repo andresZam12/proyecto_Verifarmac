@@ -44,7 +44,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             Container(
               width: 90, height: 90,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(Icons.medication_rounded, size: 50, color: AppColors.primary),
@@ -55,7 +55,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             const SizedBox(height: 8),
             Text('Verificación de medicamentos',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
           ],
         ),
       ),
