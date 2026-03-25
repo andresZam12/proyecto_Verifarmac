@@ -19,6 +19,9 @@ void main() async {
   await Supabase.initialize(
     url: 'https://ysmrqovkymjtxboybgpx.supabase.co',       // reemplazar con tu URL de Supabase
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzbXJxb3ZreW1qdHhib3liZ3B4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MTIyOTksImV4cCI6MjA4OTk4ODI5OX0.ODXyHcF4Vo98yYQ_swZOqVrk-W-gOy1680QNg9fRARE', // reemplazar con tu anon key
+    authOptions: FlutterAuthClientOptions(
+    authFlowType: AuthFlowType.pkce,
+  ),
   );
   await configurarDependencias();
   

@@ -5,9 +5,12 @@ import '../models/app_user_model.dart';
 class AuthRemoteDataSource {
   final _supabase = Supabase.instance.client;
 
-  Future<void> signInWithGoogle() async {
-    await _supabase.auth.signInWithOAuth(OAuthProvider.google);
-  }
+Future<void> signInWithGoogle() async {
+  await _supabase.auth.signInWithOAuth(
+    OAuthProvider.google,
+    redirectTo: 'io.supabase.verifarmac://login-callback',
+  );
+}
 
   Future<void> signOut() async => await _supabase.auth.signOut();
 
