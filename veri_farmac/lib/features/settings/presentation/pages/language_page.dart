@@ -23,7 +23,7 @@ class LanguagePage extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 32),
             _OpcionIdioma(
-              bandera: 'Ì∑®Ì∑¥',
+              bandera: '',
               nombre: 'Espa√±ol',
               seleccionado: localeActual?.languageCode == 'es' || localeActual == null,
               alPresionar: () async {
@@ -33,7 +33,7 @@ class LanguagePage extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _OpcionIdioma(
-              bandera: 'Ì∑∫Ì∑∏',
+              bandera: '',
               nombre: 'English',
               seleccionado: localeActual?.languageCode == 'en',
               alPresionar: () async {
