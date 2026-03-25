@@ -1,6 +1,3 @@
-// Inyección de dependencias con get_it + injectable.
-// TODO: configurar get_it y registrar dependencias
-
 import 'package:get_it/get_it.dart';
 
 import 'core/network/dio_client.dart';
@@ -21,7 +18,6 @@ import 'features/scanner/data/repositories/scanner_repository_impl.dart';
 import 'features/scanner/domain/repositories/i_scanner_repository.dart';
 
 import 'features/medicine_detail/data/datasources/invima_mock_datasource.dart';
-import 'features/medicine_detail/data/repositories/medicine_repository_impl.dart';
 import 'features/medicine_detail/data/repositories/medicine_repository_impl.dart';
 import 'features/medicine_detail/domain/repositories/i_medicine_repository.dart';
 

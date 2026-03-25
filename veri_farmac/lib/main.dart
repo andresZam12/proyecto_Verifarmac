@@ -17,8 +17,8 @@ void main() async {
 
   // Inicializa Supabase (autenticación y base de datos en la nube)
   await Supabase.initialize(
-    url: 'TU_SUPABASE_URL',       // reemplazar con tu URL de Supabase
-    anonKey: 'TU_SUPABASE_ANON_KEY', // reemplazar con tu anon key
+    url: 'https://ysmrqovkymjtxboybgpx.supabase.co',       // reemplazar con tu URL de Supabase
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzbXJxb3ZreW1qdHhib3liZ3B4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MTIyOTksImV4cCI6MjA4OTk4ODI5OX0.ODXyHcF4Vo98yYQ_swZOqVrk-W-gOy1680QNg9fRARE', // reemplazar con tu anon key
   );
   await configurarDependencias();
   

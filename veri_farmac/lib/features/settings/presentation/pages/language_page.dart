@@ -1,14 +1,10 @@
-// Pantalla de selecci贸n de idioma (onboarding y settings).
-// TODO: mostrar opciones ES/EN con banderas y guardar en SharedPreferences
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:go_router/go_router.dart';
 import '../../../../core/providers/theme_provider.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 
-// Pantalla de selecci贸n de idioma.
-// Se usa en el onboarding (primera vez) y en ajustes.
 class LanguagePage extends ConsumerWidget {
   const LanguagePage({super.key});
 
@@ -22,27 +18,28 @@ class LanguagePage extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Opci贸n espa帽ol
+            const SizedBox(height: 20),
+            Text('Elige tu idioma',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 32),
             _OpcionIdioma(
-              bandera: '馃嚚馃嚧',
+              bandera: '矸反',
               nombre: 'Espa帽ol',
-              seleccionado: localeActual?.languageCode == 'es' ||
-                  localeActual == null,
-              alPresionar: () => ref
-                  .read(localeNotifierProvider.notifier)
-                  .cambiarIdioma(const Locale('es')),
+              seleccionado: localeActual?.languageCode == 'es' || localeActual == null,
+              alPresionar: () async {
+                ref.read(localeNotifierProvider.notifier).cambiarIdioma(const Locale('es'));
+                if (context.mounted) context.go(AppRoutes.login);
+              },
             ),
-
             const SizedBox(height: 12),
-
-            // Opci贸n ingl茅s
             _OpcionIdioma(
-              bandera: '馃嚭馃嚫',
+              bandera: '矸喉犯',
               nombre: 'English',
               seleccionado: localeActual?.languageCode == 'en',
-              alPresionar: () => ref
-                  .read(localeNotifierProvider.notifier)
-                  .cambiarIdioma(const Locale('en')),
+              alPresionar: () async {
+                ref.read(localeNotifierProvider.notifier).cambiarIdioma(const Locale('en'));
+                if (context.mounted) context.go(AppRoutes.login);
+              },
             ),
           ],
         ),
@@ -51,7 +48,6 @@ class LanguagePage extends ConsumerWidget {
   }
 }
 
-// Tarjeta de opci贸n de idioma
 class _OpcionIdioma extends StatelessWidget {
   const _OpcionIdioma({
     required this.bandera,
@@ -75,34 +71,20 @@ class _OpcionIdioma extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado
-                ? AppColors.primary
-                : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+            color: seleccionado ? AppColors.primary : Theme.of(context).colorScheme.outline.withOpacity(0.3),
             width: seleccionado ? 2 : 0.5,
           ),
-          color: seleccionado
-              ? AppColors.primary.withOpacity(0.05)
-              : Colors.transparent,
+          color: seleccionado ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
         ),
-        child: Row(
-          children: [
-            Text(bandera, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                nombre,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: seleccionado ? AppColors.primary : null,
-                ),
-              ),
-            ),
-            if (seleccionado)
-              const Icon(Icons.check_circle_rounded,
-                  color: AppColors.primary, size: 20),
-          ],
-        ),
+        child: Row(children: [
+          Text(bandera, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 16),
+          Expanded(child: Text(nombre,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                  color: seleccionado ? AppColors.primary : null))),
+          if (seleccionado)
+            const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+        ]),
       ),
     );
   }

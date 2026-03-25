@@ -11,7 +11,7 @@ extension ContextExtension on BuildContext {
   bool get esModoOscuro => Theme.of(this).brightness == Brightness.dark;
 
   // Tamaño de la pantalla
-  Size get tamañoPantalla => MediaQuery.sizeOf(this);
+  Size get tamanoPantalla => MediaQuery.sizeOf(this);
 
   // Muestra un snackbar rápido
   // Ejemplo: context.mostrarMensaje('Guardado correctamente')
