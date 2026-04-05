@@ -13,57 +13,57 @@ class ScannerRepositoryImpl implements IScannerRepository {
   final ClaudeAiDataSource claude;
 
   @override
-  Future<ScanResult> procesarBarcode(String barcode) async {
-    final datos = await invima.buscarPorBarcode(barcode);
+  Future<ScanResult> processBarcode(String barcode) async {
+    final data = await invima.findByBarcode(barcode);
     return ScanResultModel(
-      id: const Uuid().v4(), valorEscaneado: barcode,
-      metodo: MetodoEscaneo.barcode, escaneadoEn: DateTime.now(),
-      confianza: datos != null ? 0.95 : 0.0,
-      nombreMedicamento: datos?['nombre'] as String?,
-      registroSanitario: datos?['registro'] as String?,
-      estado: datos?['estado'] as String?,
-      error: datos == null ? 'Medicamento no encontrado' : null,
+      id: const Uuid().v4(), scannedValue: barcode,
+      method: ScanMethod.barcode, scannedAt: DateTime.now(),
+      confidence:     data != null ? 0.95 : 0.0,
+      medicineName:   data?['nombre'] as String?,
+      sanitaryRecord: data?['registro'] as String?,
+      status:         data?['estado'] as String?,
+      error:          data == null ? 'Medicine not found' : null,
     );
   }
 
   @override
-  Future<ScanResult> procesarOcr(String texto) async {
-    final codigoInvima = _extraerCodigoInvima(texto);
-    Map<String, dynamic>? datos;
-    if (codigoInvima != null) {
-      datos = await invima.buscarPorRegistro(codigoInvima);
+  Future<ScanResult> processOcr(String text) async {
+    final invimaCode = _extractInvimaCode(text);
+    Map<String, dynamic>? data;
+    if (invimaCode != null) {
+      data = await invima.findByRegistry(invimaCode);
     } else {
-      final resultados = await invima.buscarPorTexto(texto);
-      datos = resultados.isNotEmpty ? resultados.first : null;
+      final results = await invima.search(text);
+      data = results.isNotEmpty ? results.first : null;
     }
     return ScanResultModel(
-      id: const Uuid().v4(), valorEscaneado: texto,
-      metodo: MetodoEscaneo.ocr, escaneadoEn: DateTime.now(),
-      confianza: datos != null ? 0.80 : 0.0,
-      nombreMedicamento: datos?['nombre'] as String?,
-      registroSanitario: datos?['registro'] as String?,
-      estado: datos?['estado'] as String?,
-      error: datos == null ? 'No se encontró información' : null,
+      id: const Uuid().v4(), scannedValue: text,
+      method: ScanMethod.ocr, scannedAt: DateTime.now(),
+      confidence:     data != null ? 0.80 : 0.0,
+      medicineName:   data?['nombre'] as String?,
+      sanitaryRecord: data?['registro'] as String?,
+      status:         data?['estado'] as String?,
+      error:          data == null ? 'No information found' : null,
     );
   }
 
   @override
-  Future<ScanResult> analizarImagen(String rutaImagen) async {
-    final analisis    = await claude.analizarEmpaque(rutaImagen);
-    final esAutentico = analisis['esAudentico'] as bool? ?? false;
-    final confianza   = (analisis['confianza'] as num?)?.toDouble() ?? 0.0;
-    final observacion = analisis['observaciones'] as String? ?? '';
+  Future<ScanResult> analyzeImage(String imagePath) async {
+    final analysis    = await claude.analyzePackaging(imagePath);
+    final isAuthentic = analysis['isAuthentic'] as bool? ?? false;
+    final confidence  = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
+    final observation = analysis['observations'] as String? ?? '';
     return ScanResultModel(
-      id: const Uuid().v4(), valorEscaneado: rutaImagen,
-      metodo: MetodoEscaneo.visual, escaneadoEn: DateTime.now(),
-      confianza: confianza,
-      estado: esAutentico ? 'vigente' : 'sospechoso',
-      error: esAutentico ? null : observacion,
+      id: const Uuid().v4(), scannedValue: imagePath,
+      method: ScanMethod.visual, scannedAt: DateTime.now(),
+      confidence: confidence,
+      status: isAuthentic ? 'vigente' : 'sospechoso',
+      error:  isAuthentic ? null : observation,
     );
   }
 
-  String? _extraerCodigoInvima(String texto) {
+  String? _extractInvimaCode(String text) {
     final regex = RegExp(r'INVIMA\s*\d{4}[A-Z]-?\d{6,7}', caseSensitive: false);
-    return regex.firstMatch(texto)?.group(0);
+    return regex.firstMatch(text)?.group(0);
   }
 }

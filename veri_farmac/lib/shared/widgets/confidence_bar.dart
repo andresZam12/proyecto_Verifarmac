@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 // Barra visual que muestra el nivel de confianza del análisis IA.
 // Se usa en la pantalla de resultado del medicamento.
 class ConfidenceBar extends StatelessWidget {
-  const ConfidenceBar({super.key, required this.confianza});
+  const ConfidenceBar({super.key, required this.confidence});
 
-  // Valor entre 0.0 y 1.0
-  final double confianza;
+  // Value between 0.0 and 1.0
+  final double confidence;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +19,7 @@ class ConfidenceBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Confianza del análisis',
+              'Analysis confidence',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -28,10 +28,10 @@ class ConfidenceBar extends StatelessWidget {
                   ),
             ),
             Text(
-              '${(confianza * 100).toStringAsFixed(0)}%',
+              '${(confidence * 100).toStringAsFixed(0)}%',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: _colorSegunConfianza(confianza),
+                    color: _colorByConfidence(confidence),
                   ),
             ),
           ],
@@ -40,12 +40,12 @@ class ConfidenceBar extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: confianza,
+            value: confidence,
             minHeight: 6,
             backgroundColor:
                 Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
             valueColor: AlwaysStoppedAnimation<Color>(
-              _colorSegunConfianza(confianza),
+              _colorByConfidence(confidence),
             ),
           ),
         ),
@@ -53,10 +53,10 @@ class ConfidenceBar extends StatelessWidget {
     );
   }
 
-  // Verde si es alta, amarillo si es media, rojo si es baja
-  Color _colorSegunConfianza(double valor) {
-    if (valor >= 0.7) return const Color(0xFF2E7D32); // verde
-    if (valor >= 0.4) return const Color(0xFFF9A825); // amarillo
-    return const Color(0xFFC62828);                   // rojo
+  // Green if high, yellow if medium, red if low
+  Color _colorByConfidence(double value) {
+    if (value >= 0.7) return const Color(0xFF2E7D32); // green
+    if (value >= 0.4) return const Color(0xFFF9A825); // yellow
+    return const Color(0xFFC62828);                   // red
   }
 }

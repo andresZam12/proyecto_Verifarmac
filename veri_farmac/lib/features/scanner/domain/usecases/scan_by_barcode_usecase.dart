@@ -9,5 +9,5 @@ class ScanByBarcodeUseCase {
   const ScanByBarcodeUseCase(this._repo);
   final IScannerRepository _repo;
 
-  Future<ScanResult> call(String barcode) => _repo.procesarBarcode(barcode);
+  Future<ScanResult> call(String barcode) => _repo.processBarcode(barcode);
 }

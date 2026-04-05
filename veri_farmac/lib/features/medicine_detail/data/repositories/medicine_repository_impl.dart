@@ -1,40 +1,38 @@
 // Implementación del repositorio de medicamentos.
-// TODO: conectar mock/API de INVIMA con el dominio
+// Cuando haya API real, solo se cambia el datasource — nada más.
 
 import '../../domain/entities/medicine.dart';
 import '../../domain/repositories/i_medicine_repository.dart';
 import '../datasources/invima_mock_datasource.dart';
 
-// Implementa IMedicineRepository usando el mock del INVIMA.
-// Cuando haya API real, solo se cambia el datasource — nada más.
 class MedicineRepositoryImpl implements IMedicineRepository {
   const MedicineRepositoryImpl(this._datasource);
   final InvimaMockDataSource _datasource;
 
   @override
-  Future<Medicamento?> buscarPorBarcode(String barcode) async {
+  Future<Medicine?> findByBarcode(String barcode) async {
     try {
-      return await _datasource.buscarPorBarcode(barcode);
+      return await _datasource.findByBarcode(barcode);
     } catch (e) {
-      throw Exception('Error al buscar por código: $e');
+      throw Exception('Error searching by barcode: $e');
     }
   }
 
   @override
-  Future<Medicamento?> buscarPorRegistro(String registro) async {
+  Future<Medicine?> findByRegistry(String registry) async {
     try {
-      return await _datasource.buscarPorRegistro(registro);
+      return await _datasource.findByRegistry(registry);
     } catch (e) {
-      throw Exception('Error al buscar por registro: $e');
+      throw Exception('Error searching by registry: $e');
     }
   }
 
   @override
-  Future<List<Medicamento>> buscarPorTexto(String texto) async {
+  Future<List<Medicine>> search(String query) async {
     try {
-      return await _datasource.buscarPorTexto(texto);
+      return await _datasource.search(query);
     } catch (e) {
-      throw Exception('Error al buscar por texto: $e');
+      throw Exception('Error searching medicines: $e');
     }
   }
 }

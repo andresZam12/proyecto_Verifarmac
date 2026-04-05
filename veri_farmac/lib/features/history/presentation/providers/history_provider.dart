@@ -4,55 +4,78 @@ import '../../data/datasources/history_remote_datasource.dart';
 import '../../data/repositories/history_repository_impl.dart';
 import '../../domain/entities/history_entry.dart';
 import '../../domain/usecases/history_usecases.dart';
+import '../../../../../core/constants/app_strings.dart';
 
 class HistoryState {
-  const HistoryState({this.entradas = const [], this.cargando = false, this.error, this.filtro});
-  final List<HistoryEntry> entradas;
-  final bool               cargando;
+  const HistoryState({
+    this.entries   = const [],
+    this.isLoading = false,
+    this.error,
+    this.filter,
+  });
+  final List<HistoryEntry> entries;
+  final bool               isLoading;
   final String?            error;
-  final String?            filtro;
+  final String?            filter;
 
-  List<HistoryEntry> get entradasFiltradas =>
-      filtro == null ? entradas : entradas.where((e) => e.estado == filtro).toList();
+  List<HistoryEntry> get filteredEntries =>
+      filter == null ? entries : entries.where((e) => e.status == filter).toList();
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier(this._obtener, this._eliminar, this._sincronizar) : super(const HistoryState());
-  final ObtenerHistorialUseCase     _obtener;
-  final EliminarHistorialUseCase    _eliminar;
-  final SincronizarHistorialUseCase _sincronizar;
+  HistoryNotifier(this._fetch, this._delete, this._sync)
+      : super(const HistoryState());
 
-  Future<void> cargar() async {
-    state = const HistoryState(cargando: true);
+  final FetchHistoryUseCase       _fetch;
+  final DeleteHistoryEntryUseCase _delete;
+  final SyncHistoryUseCase        _sync;
+
+  Future<void> load() async {
+    state = const HistoryState(isLoading: true);
     try {
-      state = HistoryState(entradas: await _obtener());
+      state = HistoryState(entries: await _fetch());
     } catch (_) {
-      state = const HistoryState(error: 'Error al cargar el historial');
+      state = const HistoryState(error: AppStrings.errorLoadingHistory);
     }
   }
 
-  Future<void> eliminar(String id) async {
+  Future<void> delete(String id) async {
     try {
-      await _eliminar(id);
-      state = HistoryState(entradas: state.entradas.where((e) => e.id != id).toList(), filtro: state.filtro);
+      await _delete(id);
+      state = HistoryState(
+        entries: state.entries.where((e) => e.id != id).toList(),
+        filter: state.filter,
+      );
     } catch (_) {
-      state = HistoryState(entradas: state.entradas, error: 'Error al eliminar');
+      state = HistoryState(entries: state.entries, error: AppStrings.errorDeleting);
     }
   }
 
-  void filtrar(String? estado) =>
-      state = HistoryState(entradas: state.entradas, filtro: estado);
+  void filterBy(String? status) =>
+      state = HistoryState(entries: state.entries, filter: status);
 
-  Future<void> sincronizar(String userId) async {
-    try { await _sincronizar(userId); } catch (_) {}
+  Future<void> sync(String userId) async {
+    try {
+      await _sync(userId);
+    } catch (_) {}
   }
 }
 
 final _localProvider      = Provider((_) => HistoryLocalDataSource());
-final _remotoProvider     = Provider((_) => HistoryRemoteDataSource());
-final _repositoryProvider = Provider((ref) => HistoryRepositoryImpl(ref.read(_localProvider), ref.read(_remotoProvider)));
+final _remoteProvider     = Provider((_) => HistoryRemoteDataSource());
+final _repositoryProvider = Provider(
+  (ref) => HistoryRepositoryImpl(
+    ref.read(_localProvider),
+    ref.read(_remoteProvider),
+  ),
+);
 
-final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
+final historyProvider =
+    StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
   final repo = ref.read(_repositoryProvider);
-  return HistoryNotifier(ObtenerHistorialUseCase(repo), EliminarHistorialUseCase(repo), SincronizarHistorialUseCase(repo));
+  return HistoryNotifier(
+    FetchHistoryUseCase(repo),
+    DeleteHistoryEntryUseCase(repo),
+    SyncHistoryUseCase(repo),
+  );
 });

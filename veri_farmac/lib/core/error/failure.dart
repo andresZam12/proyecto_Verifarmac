@@ -1,50 +1,47 @@
-// Clases de fallo que retorna el dominio.
-// Los Failure son los errores que el dominio le comunica a la UI.
-// En vez de lanzar excepciones, los use cases retornan un Failure.
+// Failure classes returned by the domain layer.
+// Instead of throwing exceptions, use cases return a Failure.
 
 abstract class Failure {
-  const Failure(this.mensaje);
-  final String mensaje;
+  const Failure(this.message);
+  final String message;
 }
 
-// Sin conexión a internet
-class SinConexionFailure extends Failure {
-  const SinConexionFailure() : super('Sin conexión a internet');
+// No internet connection
+class NoConnectionFailure extends Failure {
+  const NoConnectionFailure() : super('No internet connection');
 }
 
-// Error del servidor o API
-class ServidorFailure extends Failure {
-  const ServidorFailure([String mensaje = 'Error en el servidor'])
-      : super(mensaje);
+// Server or API error
+class ServerFailure extends Failure {
+  const ServerFailure([super.message = 'Server error']);
 }
 
-// Medicamento no encontrado en la base de datos
-class NoEncontradoFailure extends Failure {
-  const NoEncontradoFailure() : super('Medicamento no encontrado');
+// Medicine not found in the database
+class NotFoundFailure extends Failure {
+  const NotFoundFailure() : super('Medicine not found');
 }
 
-// Error al leer o escribir en la base de datos local
+// Error reading or writing to local database
 class CacheFailure extends Failure {
-  const CacheFailure() : super('Error al acceder al historial local');
+  const CacheFailure() : super('Error accessing local history');
 }
 
-// Permiso de cámara o ubicación denegado
-class PermisoFailure extends Failure {
-  const PermisoFailure() : super('Permiso denegado');
+// Camera or location permission denied
+class PermissionFailure extends Failure {
+  const PermissionFailure() : super('Permission denied');
 }
 
-// No se pudo leer el código del medicamento
-class EscaneoFailure extends Failure {
-  const EscaneoFailure() : super('No se pudo leer el código');
+// Could not read the medicine code
+class ScanFailure extends Failure {
+  const ScanFailure() : super('Could not read the code');
 }
 
-// Error de autenticación
+// Authentication error
 class AuthFailure extends Failure {
-  const AuthFailure([String mensaje = 'Error de autenticación'])
-      : super(mensaje);
+  const AuthFailure([super.message = 'Authentication error']);
 }
 
-// Error genérico para casos no contemplados
-class ErrorDesconocidoFailure extends Failure {
-  const ErrorDesconocidoFailure() : super('Ocurrió un error inesperado');
+// Generic error for unhandled cases
+class UnknownFailure extends Failure {
+  const UnknownFailure() : super('An unexpected error occurred');
 }

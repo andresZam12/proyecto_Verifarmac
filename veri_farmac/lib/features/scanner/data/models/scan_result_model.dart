@@ -1,56 +1,56 @@
 import '../../domain/entities/scan_result.dart';
 
-// Extiende ScanResult y agrega conversión desde/hacia JSON.
-// Se usa para guardar y leer del historial local (Drift) y Supabase.
+// Extends ScanResult and adds JSON serialization.
+// Used to save and read from local history (Drift) and Supabase.
 class ScanResultModel extends ScanResult {
   const ScanResultModel({
     required super.id,
-    required super.valorEscaneado,
-    required super.metodo,
-    required super.escaneadoEn,
-    super.confianza,
-    super.nombreMedicamento,
-    super.registroSanitario,
-    super.estado,
+    required super.scannedValue,
+    required super.method,
+    required super.scannedAt,
+    super.confidence,
+    super.medicineName,
+    super.sanitaryRecord,
+    super.status,
     super.error,
   });
 
-  // Crea un ScanResultModel desde un Map (viene de Drift o Supabase)
+  // Creates a ScanResultModel from a Map (from Drift or Supabase)
   factory ScanResultModel.fromJson(Map<String, dynamic> json) {
     return ScanResultModel(
-      id:                json['id'] as String,
-      valorEscaneado:    json['valor_escaneado'] as String,
-      metodo:            _parsearMetodo(json['metodo'] as String),
-      escaneadoEn:       DateTime.parse(json['escaneado_en'] as String),
-      confianza:         (json['confianza'] as num?)?.toDouble() ?? 0.0,
-      nombreMedicamento: json['nombre_medicamento'] as String?,
-      registroSanitario: json['registro_sanitario'] as String?,
-      estado:            json['estado'] as String?,
-      error:             json['error'] as String?,
+      id:             json['id'] as String,
+      scannedValue:   json['valor_escaneado'] as String,
+      method:         _parseMethod(json['metodo'] as String),
+      scannedAt:      DateTime.parse(json['escaneado_en'] as String),
+      confidence:     (json['confianza'] as num?)?.toDouble() ?? 0.0,
+      medicineName:   json['nombre_medicamento'] as String?,
+      sanitaryRecord: json['registro_sanitario'] as String?,
+      status:         json['estado'] as String?,
+      error:          json['error'] as String?,
     );
   }
 
-  // Convierte a Map para guardar en Drift o Supabase
+  // Converts to Map for saving in Drift or Supabase
   Map<String, dynamic> toJson() {
     return {
       'id':                 id,
-      'valor_escaneado':    valorEscaneado,
-      'metodo':             metodo.name,
-      'escaneado_en':       escaneadoEn.toIso8601String(),
-      'confianza':          confianza,
-      'nombre_medicamento': nombreMedicamento,
-      'registro_sanitario': registroSanitario,
-      'estado':             estado,
+      'valor_escaneado':    scannedValue,
+      'metodo':             method.name,
+      'escaneado_en':       scannedAt.toIso8601String(),
+      'confianza':          confidence,
+      'nombre_medicamento': medicineName,
+      'registro_sanitario': sanitaryRecord,
+      'estado':             status,
       'error':              error,
     };
   }
 
-  // Convierte el string del método al enum correspondiente
-  static MetodoEscaneo _parsearMetodo(String valor) {
-    switch (valor) {
-      case 'ocr':    return MetodoEscaneo.ocr;
-      case 'visual': return MetodoEscaneo.visual;
-      default:       return MetodoEscaneo.barcode;
+  // Converts the method string to the corresponding enum value
+  static ScanMethod _parseMethod(String value) {
+    switch (value) {
+      case 'ocr':    return ScanMethod.ocr;
+      case 'visual': return ScanMethod.visual;
+      default:       return ScanMethod.barcode;
     }
   }
 }

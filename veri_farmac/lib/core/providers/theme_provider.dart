@@ -1,13 +1,14 @@
-// Maneja ThemeMode (light / dark / system) con Riverpod.
-// TODO: implementar ThemeNotifier y LocaleNotifier con SharedPreferences
+// Maneja ThemeMode (light / dark / system) y Locale con Riverpod.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Claves para guardar en SharedPreferences
-const _temaKey = 'app_tema';
-const _idiomaKey = 'app_idioma';
+import '../constants/app_strings.dart';
+
+// Claves para guardar en SharedPreferences — centralizadas en AppStrings
+const _themeKey  = AppStrings.prefThemeKey;
+const _localeKey = AppStrings.prefLocaleKey;
 
 // Provider de SharedPreferences — se inyecta desde main.dart
 final sharedPrefsProvider = Provider<SharedPreferences>(
@@ -21,21 +22,19 @@ final sharedPrefsProvider = Provider<SharedPreferences>(
 class ThemeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
-    // Lee el tema guardado, si no hay ninguno usa el del sistema
     final prefs = ref.read(sharedPrefsProvider);
-    final guardado = prefs.getString(_temaKey);
-    return _parsearTema(guardado);
+    return _parseTheme(prefs.getString(_themeKey));
   }
 
-  // Cambia el tema y lo guarda
-  void cambiarTema(ThemeMode modo) {
-    state = modo;
-    ref.read(sharedPrefsProvider).setString(_temaKey, modo.name);
+  // Cambia el tema y lo persiste
+  void changeTheme(ThemeMode mode) {
+    state = mode;
+    ref.read(sharedPrefsProvider).setString(_themeKey, mode.name);
   }
 
   // Convierte el string guardado a ThemeMode
-  ThemeMode _parsearTema(String? valor) {
-    switch (valor) {
+  ThemeMode _parseTheme(String? value) {
+    switch (value) {
       case 'light':  return ThemeMode.light;
       case 'dark':   return ThemeMode.dark;
       default:       return ThemeMode.system;
@@ -53,22 +52,21 @@ final themeNotifierProvider =
 class LocaleNotifier extends Notifier<Locale?> {
   @override
   Locale? build() {
-    // Lee el idioma guardado, null significa que sigue el sistema
     final prefs = ref.read(sharedPrefsProvider);
-    final guardado = prefs.getString(_idiomaKey);
-    if (guardado == null) return null;
-    return Locale(guardado);
+    final saved = prefs.getString(_localeKey);
+    if (saved == null) return null;
+    return Locale(saved);
   }
 
-  // Cambia el idioma y lo guarda
-  void cambiarIdioma(Locale locale) {
+  // Cambia el idioma y lo persiste
+  void changeLocale(Locale locale) {
     state = locale;
-    ref.read(sharedPrefsProvider).setString(_idiomaKey, locale.languageCode);
+    ref.read(sharedPrefsProvider).setString(_localeKey, locale.languageCode);
   }
 
   // Verifica si el usuario ya eligió un idioma antes
-  static bool yaEligioIdioma(SharedPreferences prefs) {
-    return prefs.getString(_idiomaKey) != null;
+  static bool hasChosenLocale(SharedPreferences prefs) {
+    return prefs.getString(_localeKey) != null;
   }
 }
 

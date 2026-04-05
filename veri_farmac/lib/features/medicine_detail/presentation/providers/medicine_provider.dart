@@ -1,62 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../data/datasources/invima_mock_datasource.dart';
 import '../../data/repositories/medicine_repository_impl.dart';
 import '../../domain/entities/medicine.dart';
 import '../../domain/usecases/get_medicine_usecase.dart';
 
 // Estados posibles al cargar un medicamento
-enum EstadoMedicina { inicial, cargando, cargado, noEncontrado, error }
+enum MedicineStatus { initial, loading, loaded, notFound, error }
 
 class MedicineState {
   const MedicineState({
-    this.estado = EstadoMedicina.inicial,
-    this.medicamento,
+    this.status = MedicineStatus.initial,
+    this.medicine,
     this.error,
   });
 
-  final EstadoMedicina estado;
-  final Medicamento?   medicamento;
+  final MedicineStatus status;
+  final Medicine?      medicine;
   final String?        error;
 }
 
 class MedicineNotifier extends StateNotifier<MedicineState> {
-  MedicineNotifier(this._porBarcode, this._porRegistro)
+  MedicineNotifier(this._byBarcode, this._byRegistry)
       : super(const MedicineState());
 
-  final GetMedicineByBarcodeUseCase  _porBarcode;
-  final GetMedicineByRegistroUseCase _porRegistro;
+  final GetMedicineByBarcodeUseCase  _byBarcode;
+  final GetMedicineByRegistryUseCase _byRegistry;
 
   // Carga el medicamento por código de barras
-  Future<void> cargarPorBarcode(String barcode) async {
-    state = const MedicineState(estado: EstadoMedicina.cargando);
+  Future<void> loadByBarcode(String barcode) async {
+    state = const MedicineState(status: MedicineStatus.loading);
     try {
-      final medicamento = await _porBarcode(barcode);
-      state = medicamento != null
-          ? MedicineState(estado: EstadoMedicina.cargado, medicamento: medicamento)
-          : const MedicineState(estado: EstadoMedicina.noEncontrado);
+      final medicine = await _byBarcode(barcode);
+      state = medicine != null
+          ? MedicineState(status: MedicineStatus.loaded, medicine: medicine)
+          : const MedicineState(status: MedicineStatus.notFound);
     } catch (e) {
-      state = MedicineState(estado: EstadoMedicina.error, error: e.toString());
+      state = MedicineState(status: MedicineStatus.error, error: e.toString());
     }
   }
 
   // Carga el medicamento por registro INVIMA
-  Future<void> cargarPorRegistro(String registro) async {
-    state = const MedicineState(estado: EstadoMedicina.cargando);
+  Future<void> loadByRegistry(String registry) async {
+    state = const MedicineState(status: MedicineStatus.loading);
     try {
-      final medicamento = await _porRegistro(registro);
-      state = medicamento != null
-          ? MedicineState(estado: EstadoMedicina.cargado, medicamento: medicamento)
-          : const MedicineState(estado: EstadoMedicina.noEncontrado);
+      final medicine = await _byRegistry(registry);
+      state = medicine != null
+          ? MedicineState(status: MedicineStatus.loaded, medicine: medicine)
+          : const MedicineState(status: MedicineStatus.notFound);
     } catch (e) {
-      state = MedicineState(estado: EstadoMedicina.error, error: e.toString());
+      state = MedicineState(status: MedicineStatus.error, error: e.toString());
     }
   }
 }
 
-// Providers
 final _datasourceProvider = Provider((_) => InvimaMockDataSource());
-
 final _repositoryProvider = Provider(
   (ref) => MedicineRepositoryImpl(ref.read(_datasourceProvider)),
 );
@@ -66,6 +63,6 @@ final medicineProvider =
   final repo = ref.read(_repositoryProvider);
   return MedicineNotifier(
     GetMedicineByBarcodeUseCase(repo),
-    GetMedicineByRegistroUseCase(repo),
+    GetMedicineByRegistryUseCase(repo),
   );
 });

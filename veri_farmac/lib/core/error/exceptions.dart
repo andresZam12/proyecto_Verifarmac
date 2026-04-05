@@ -1,28 +1,28 @@
-// Excepciones internas de la capa de datos.
-// Las excepciones solo existen en la capa de datos (data/).
-// Los repositorios las capturan y las convierten en Failure
-// antes de llegar al dominio o la UI.
+// Internal exceptions for the data layer.
+// Exceptions only exist in the data layer (data/).
+// Repositories catch them and convert them into Failures
+// before reaching the domain or UI.
 
-class ServidorException implements Exception {
-  const ServidorException([this.mensaje = 'Error en el servidor']);
-  final String mensaje;
+class ServerException implements Exception {
+  const ServerException([this.message = 'Server error']);
+  final String message;
 }
 
-class SinConexionException implements Exception {
-  const SinConexionException();
+class NoConnectionException implements Exception {
+  const NoConnectionException();
 }
 
-class NoEncontradoException implements Exception {
-  const NoEncontradoException([this.mensaje = 'No encontrado']);
-  final String mensaje;
+class NotFoundException implements Exception {
+  const NotFoundException([this.message = 'Not found']);
+  final String message;
 }
 
 class CacheException implements Exception {
-  const CacheException([this.mensaje = 'Error en base de datos local']);
-  final String mensaje;
+  const CacheException([this.message = 'Local database error']);
+  final String message;
 }
 
 class AuthException implements Exception {
-  const AuthException([this.mensaje = 'Error de autenticación']);
-  final String mensaje;
+  const AuthException([this.message = 'Authentication error']);
+  final String message;
 }

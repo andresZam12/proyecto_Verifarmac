@@ -3,22 +3,22 @@ import 'package:dio/dio.dart';
 class RetryInterceptor extends Interceptor {
   RetryInterceptor(this._dio);
   final Dio _dio;
-  static const _maxReintentos = 2;
+  static const _maxRetries = 2;
 
   @override
-  void onError(DioException error, ErrorInterceptorHandler handler) async {
-    final esErrorDeRed = error.type == DioExceptionType.connectionError ||
-        error.type == DioExceptionType.receiveTimeout ||
-        error.type == DioExceptionType.connectionTimeout;
-    final intentos = error.requestOptions.extra['intentos'] ?? 0;
-    if (esErrorDeRed && intentos < _maxReintentos) {
-      error.requestOptions.extra['intentos'] = intentos + 1;
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final isNetworkError = err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.connectionTimeout;
+    final attempts = err.requestOptions.extra['attempts'] ?? 0;
+    if (isNetworkError && attempts < _maxRetries) {
+      err.requestOptions.extra['attempts'] = attempts + 1;
       try {
-        final respuesta = await _dio.fetch(error.requestOptions);
-        handler.resolve(respuesta);
+        final response = await _dio.fetch(err.requestOptions);
+        handler.resolve(response);
         return;
       } catch (_) {}
     }
-    handler.next(error);
+    handler.next(err);
   }
 }

@@ -1,109 +1,106 @@
-// Pantalla de perfil del usuario.
-// TODO: mostrar datos de Supabase y opción de cerrar sesión
+// Pantalla de perfil del usuario con datos de Supabase y opción de cerrar sesión.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-// Pantalla de perfil con datos del usuario y opción de cerrar sesión.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final usuario = Supabase.instance.client.auth.currentUser;
-    final nombre = usuario?.userMetadata?['full_name'] as String? ?? 'Usuario';
-    final email  = usuario?.email ?? '';
-    final avatar = usuario?.userMetadata?['avatar_url'] as String?;
+    final user   = Supabase.instance.client.auth.currentUser;
+    final name   = user?.userMetadata?['full_name'] as String? ?? 'Usuario';
+    final email  = user?.email ?? '';
+    final avatar = user?.userMetadata?['avatar_url'] as String?;
+    final l10n   = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil')),
+      appBar: AppBar(title: Text(l10n.profile)),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              backgroundImage: avatar != null ? NetworkImage(avatar) : null,
-              child: avatar == null
-                  ? Text(
-                      nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    )
-                  : null,
-            ),
+        child: Column(children: [
 
-            const SizedBox(height: 16),
+          // Avatar
+          CircleAvatar(
+            radius: 48,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+            child: avatar == null
+                ? Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : null,
+          ),
 
-            // Nombre
-            Text(
-              nombre,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
+          const SizedBox(height: 16),
 
-            const SizedBox(height: 4),
+          // Nombre
+          Text(
+            name,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
 
-            // Email
-            Text(
-              email,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.5),
-                  ),
-            ),
+          const SizedBox(height: 4),
 
-            const SizedBox(height: 40),
-
-            // Botón cerrar sesión
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _cerrarSesion(context, ref),
-                icon: const Icon(Icons.logout_rounded, color: Colors.red),
-                label: const Text(
-                  'Cerrar sesión',
-                  style: TextStyle(color: Colors.red),
+          // Email
+          Text(
+            email,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+          ),
+
+          const SizedBox(height: 40),
+
+          // Botón cerrar sesión
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _signOut(context, ref),
+              icon: const Icon(Icons.logout_rounded, color: Colors.red),
+              label: Text(l10n.signOut,
+                  style: const TextStyle(color: Colors.red)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
 
-  void _cerrarSesion(BuildContext context, WidgetRef ref) {
+  void _signOut(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Seguro que quieres cerrar sesión?'),
+        title: Text(l10n.signOut),
+        content: Text(l10n.confirmSignOut),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -111,8 +108,8 @@ class ProfilePage extends ConsumerWidget {
               await ref.read(authProvider.notifier).signOut();
               if (context.mounted) context.go(AppRoutes.login);
             },
-            child: const Text('Cerrar sesión',
-                style: TextStyle(color: Colors.red)),
+            child: Text(l10n.signOut,
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),

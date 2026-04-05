@@ -1,46 +1,43 @@
-// Tile reutilizable para cada opción de ajustes.
-// TODO: implementar con ícono, título, subtitle, trailing y isDestructive
-
+// Tile reutilizable para cada opción de la pantalla de ajustes.
 import 'package:flutter/material.dart';
 
-// Tile reutilizable para cada opción de la pantalla de ajustes.
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     super.key,
-    required this.icono,
-    required this.titulo,
-    this.subtitulo,
+    required this.icon,
+    required this.title,
+    this.subtitle,
     this.trailing,
-    this.alPresionar,
-    this.esDestructivo = false,
+    this.onPress,
+    this.isDestructive = false,
   });
 
-  final IconData     icono;
-  final String       titulo;
-  final String?      subtitulo;
-  final Widget?      trailing;
-  final VoidCallback? alPresionar;
-  final bool         esDestructivo; // true para opciones como "Cerrar sesión"
+  final IconData      icon;
+  final String        title;
+  final String?       subtitle;
+  final Widget?       trailing;
+  final VoidCallback? onPress;
+  final bool          isDestructive; // true para opciones como "Cerrar sesión"
 
   @override
   Widget build(BuildContext context) {
-    final color = esDestructivo
+    final color = isDestructive
         ? Colors.red
         : Theme.of(context).colorScheme.onSurface;
 
     return ListTile(
-      leading: Icon(icono, color: esDestructivo ? Colors.red : null),
+      leading: Icon(icon, color: isDestructive ? Colors.red : null),
       title: Text(
-        titulo,
+        title,
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w500,
           fontSize: 14,
         ),
       ),
-      subtitle: subtitulo != null ? Text(subtitulo!) : null,
+      subtitle: subtitle != null ? Text(subtitle!) : null,
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
-      onTap: alPresionar,
+      onTap: onPress,
     );
   }
 }

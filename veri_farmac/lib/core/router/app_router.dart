@@ -1,12 +1,9 @@
 // Navegación central con go_router.
-// TODO: definir todas las rutas y el redirect de autenticación
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Importamos las páginas (aún vacías, se llenarán después)
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/settings/presentation/pages/language_page.dart';
@@ -14,8 +11,11 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/scanner/presentation/pages/scanner_page.dart';
 import '../../features/history/presentation/pages/history_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/settings/presentation/pages/theme_settings_page.dart';
+import '../../features/settings/presentation/pages/profile_page.dart';
 import '../../features/medicine_detail/presentation/pages/medicine_detail_page.dart';
 import '../../features/map/presentation/pages/map_page.dart';
+import '../../features/scanner/domain/entities/scan_result.dart';
 
 // ─────────────────────────────────────────
 // RUTAS — constantes para evitar errores de tipeo
@@ -24,15 +24,18 @@ import '../../features/map/presentation/pages/map_page.dart';
 class AppRoutes {
   AppRoutes._();
 
-  static const splash          = '/';
-  static const idioma          = '/idioma';
-  static const login           = '/login';
-  static const dashboard       = '/dashboard';
-  static const scanner         = '/scanner';
-  static const historial       = '/historial';
-  static const ajustes         = '/ajustes';
-  static const medicamento     = '/medicamento';
-  static const mapa            = '/mapa';
+  static const splash   = '/';
+  static const login    = '/login';
+  static const dashboard = '/dashboard';
+  static const scanner  = '/scanner';
+  static const history  = '/history';
+  static const settings = '/settings';
+  static const medicine = '/medicine';
+  static const map      = '/map';
+  // Sub-rutas de settings
+  static const settingsProfile  = '/settings/profile';
+  static const settingsTheme    = '/settings/theme';
+  static const settingsLanguage = '/settings/language';
 }
 
 // ─────────────────────────────────────────
@@ -45,32 +48,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
     // Redirige al login si no hay sesión activa
     redirect: (context, state) {
-      final sesionActiva = Supabase.instance.client.auth.currentSession != null;
-      final rutaActual = state.matchedLocation;
+      final hasSession = Supabase.instance.client.auth.currentSession != null;
+      final currentPath = state.matchedLocation;
 
       // Rutas que no requieren sesión
-      final rutasPublicas = [
-        AppRoutes.splash,
-        AppRoutes.idioma,
-        AppRoutes.login,
-      ];
+      const publicRoutes = [AppRoutes.splash, AppRoutes.login];
+      final isPublic = publicRoutes.contains(currentPath);
 
-      final esPublica = rutasPublicas.contains(rutaActual);
-
-      // Si no hay sesión y la ruta es privada, va al login
-      if (!sesionActiva && !esPublica) return AppRoutes.login;
-
-      return null; // sin redirección
+      if (!hasSession && !isPublic) return AppRoutes.login;
+      return null;
     },
 
     routes: [
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.idioma,
-        builder: (context, state) => const LanguagePage(),
       ),
       GoRoute(
         path: AppRoutes.login,
@@ -85,24 +77,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ScannerPage(),
       ),
       GoRoute(
-        path: AppRoutes.historial,
+        path: AppRoutes.history,
         builder: (context, state) => const HistoryPage(),
       ),
       GoRoute(
-        path: AppRoutes.mapa,
+        path: AppRoutes.map,
         builder: (context, state) => const MapPage(),
       ),
+      // BUG FIX: el extra es un ScanResult, no un String
       GoRoute(
-        path: AppRoutes.medicamento,
+        path: AppRoutes.medicine,
         builder: (context, state) {
-          // Recibe el id del medicamento como parámetro extra
-          final id = state.extra as String? ?? '';
+          final result = state.extra as ScanResult;
+          final id     = result.sanitaryRecord ?? result.scannedValue;
           return MedicineDetailPage(medicineId: id);
         },
       ),
       GoRoute(
-        path: AppRoutes.ajustes,
+        path: AppRoutes.settings,
         builder: (context, state) => const SettingsPage(),
+        routes: [
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const ProfilePage(),
+          ),
+          GoRoute(
+            path: 'theme',
+            builder: (context, state) => const ThemeSettingsPage(),
+          ),
+          GoRoute(
+            path: 'language',
+            builder: (context, state) => const LanguagePage(),
+          ),
+        ],
       ),
     ],
   );

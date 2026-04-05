@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,57 +9,6 @@ import 'app_localizations_es.dart';
 
 // ignore_for_file: type=lint
 
-/// Callers can lookup localized strings with an instance of AppLocalizations
-/// returned by `AppLocalizations.of(context)`.
-///
-/// Applications need to include `AppLocalizations.delegate()` in their app's
-/// `localizationDelegates` list, and the locales they support in the app's
-/// `supportedLocales` list. For example:
-///
-/// ```dart
-/// import 'l10n/app_localizations.dart';
-///
-/// return MaterialApp(
-///   localizationsDelegates: AppLocalizations.localizationsDelegates,
-///   supportedLocales: AppLocalizations.supportedLocales,
-///   home: MyApplicationHome(),
-/// );
-/// ```
-///
-/// ## Update pubspec.yaml
-///
-/// Please make sure to update your pubspec.yaml to include the following
-/// packages:
-///
-/// ```yaml
-/// dependencies:
-///   # Internationalization support.
-///   flutter_localizations:
-///     sdk: flutter
-///   intl: any # Use the pinned version from flutter_localizations
-///
-///   # Rest of dependencies
-/// ```
-///
-/// ## iOS Applications
-///
-/// iOS applications define key application metadata, including supported
-/// locales, in an Info.plist file that is built into the application bundle.
-/// To configure the locales supported by your app, you’ll need to edit this
-/// file.
-///
-/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
-/// Then, in the Project Navigator, open the Info.plist file under the Runner
-/// project’s Runner folder.
-///
-/// Next, select the Information Property List item, select Add Item from the
-/// Editor menu, then select Localizations from the pop-up menu.
-///
-/// Select and expand the newly-created Localizations item then, for each
-/// locale your application supports, add a new item and select the locale
-/// you wish to add from the pop-up menu in the Value field. This list should
-/// be consistent with the languages listed in the AppLocalizations.supportedLocales
-/// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
     : localeName = intl.Intl.canonicalizedLocale(locale.toString());
@@ -74,16 +22,6 @@ abstract class AppLocalizations {
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
 
-  /// A list of this localizations delegate along with the default localizations
-  /// delegates.
-  ///
-  /// Returns a list of localizations delegates containing this delegate along with
-  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
-  /// and GlobalWidgetsLocalizations.delegate.
-  ///
-  /// Additional delegates can be added by appending to this list in
-  /// MaterialApp. This list does not have to be used at all if a custom list
-  /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
         delegate,
@@ -92,11 +30,95 @@ abstract class AppLocalizations {
         GlobalWidgetsLocalizations.delegate,
       ];
 
-  /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
     Locale('es'),
   ];
+
+  // ── General ────────────────────────────────────────────────
+  String get home;
+  String get settings;
+  String get cancel;
+  String get delete;
+  String get version;
+  String get all;
+
+  // ── Auth ───────────────────────────────────────────────────
+  String get welcome;
+  String get signInSubtitle;
+  String get signOut;
+  String get confirmSignOut;
+
+  // ── Dashboard ──────────────────────────────────────────────
+  String get scanSummary;
+  String get total;
+  String get valid;
+  String get expired;
+  String get distribution;
+  String get noScansYet;
+  String get scanMedicine;
+
+  // ── Scanner ────────────────────────────────────────────────
+  String get scan;
+  String get aimAtBarcode;
+  String get aimAtPackageText;
+  String get analyzing;
+  String get scanModeBarcode;
+  String get scanModeOcr;
+
+  // ── Medicine detail ────────────────────────────────────────
+  String get result;
+  String get consultingInvima;
+  String get medicineNotFound;
+  String get medicineNotFoundDesc;
+  String get sanitaryRecord;
+  String get code;
+  String get status;
+  String get laboratory;
+  String get holder;
+  String get medicineInfo;
+  String get activeIngredient;
+  String get concentration;
+  String get pharmaceuticalForm;
+  String get unsafeMedicineWarning;
+
+  // ── History ────────────────────────────────────────────────
+  String get history;
+  String get loadingHistory;
+  String get noRecords;
+  String get scannedMedicinesHere;
+  String get deleteRecord;
+  String get confirmDeleteRecord;
+  String get filterValid;
+  String get filterExpired;
+  String get filterInvalid;
+  String get filterSuspicious;
+
+  // ── Settings ───────────────────────────────────────────────
+  String get account;
+  String get profile;
+  String get viewEditProfile;
+  String get appearance;
+  String get themeLabel;
+  String get themeLight;
+  String get themeDark;
+  String get themeSystem;
+  String get language;
+  String get chooseLanguage;
+  String get spanish;
+  String get english;
+  String get about;
+
+  // ── Map ────────────────────────────────────────────────────
+  String get nearbyPharmacies;
+  String get gettingLocation;
+  String get locationPermissionNeeded;
+  String get allowLocation;
+}
+
+// Shortcut: context.l10n instead of AppLocalizations.of(context)!
+extension AppLocalizationsX on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this)!;
 }
 
 class _AppLocalizationsDelegate
@@ -117,18 +139,9 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-  // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
-    case 'es':
-      return AppLocalizationsEs();
+    case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
   }
-
-  throw FlutterError(
-    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
+  throw FlutterError('Unsupported locale: $locale');
 }

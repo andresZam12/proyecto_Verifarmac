@@ -1,37 +1,34 @@
-// Tile de una entrada del historial.
-// TODO: mostrar nombre, StatusBadge, fecha y opción de eliminar
+// Tile que muestra un escaneo guardado en el historial.
 
 import 'package:flutter/material.dart';
-
 import '../../../../features/medicine_detail/domain/entities/medicine.dart';
 import '../../../../features/medicine_detail/presentation/widgets/status_badge.dart';
 import '../../domain/entities/history_entry.dart';
 
-// Tile que muestra un escaneo guardado en el historial.
 class HistoryEntryTile extends StatelessWidget {
   const HistoryEntryTile({
     super.key,
-    required this.entrada,
-    this.alPresionar,
-    this.alEliminar,
+    required this.entry,
+    this.onPress,
+    this.onDelete,
   });
 
-  final HistoryEntry  entrada;
-  final VoidCallback? alPresionar;
-  final VoidCallback? alEliminar;
+  final HistoryEntry  entry;
+  final VoidCallback? onPress;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      onTap: alPresionar,
-      leading: _IconoMetodo(metodo: entrada.metodo),
+      onTap: onPress,
+      leading: _MethodIcon(method: entry.method),
       title: Text(
-        entrada.nombreMedicamento,
+        entry.medicineName,
         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        entrada.creadoEn.fechaRelativa,
+        entry.createdAt.relativeDate,
         style: TextStyle(
           fontSize: 12,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
@@ -40,14 +37,14 @@ class HistoryEntryTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Badge del estado
-          StatusBadge(estado: Medicamento.parsearEstado(entrada.estado)),
+          // Badge del estado del medicamento
+          StatusBadge(condition: Medicine.parseCondition(entry.status)),
           // Botón de eliminar
-          if (alEliminar != null)
+          if (onDelete != null)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
               color: Theme.of(context).colorScheme.error,
-              onPressed: alEliminar,
+              onPressed: onDelete,
             ),
         ],
       ),
@@ -56,13 +53,13 @@ class HistoryEntryTile extends StatelessWidget {
 }
 
 // Ícono según el método de escaneo usado
-class _IconoMetodo extends StatelessWidget {
-  const _IconoMetodo({required this.metodo});
-  final String metodo;
+class _MethodIcon extends StatelessWidget {
+  const _MethodIcon({required this.method});
+  final String method;
 
   @override
   Widget build(BuildContext context) {
-    final icono = switch (metodo) {
+    final icon = switch (method) {
       'ocr'    => Icons.text_fields_rounded,
       'visual' => Icons.image_search_rounded,
       _        => Icons.qr_code_scanner_rounded,
@@ -75,21 +72,20 @@ class _IconoMetodo extends StatelessWidget {
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icono, size: 20,
-        color: Theme.of(context).colorScheme.primary),
+      child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
     );
   }
 }
 
 // Extensión para mostrar la fecha relativa
 extension on DateTime {
-  String get fechaRelativa {
-    final hoy = DateTime.now();
-    final diff = DateTime(hoy.year, hoy.month, hoy.day)
+  String get relativeDate {
+    final today = DateTime.now();
+    final diff  = DateTime(today.year, today.month, today.day)
         .difference(DateTime(year, month, day))
         .inDays;
-    if (diff == 0) return 'Hoy';
-    if (diff == 1) return 'Ayer';
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
     return '$day/$month/$year';
   }
 }

@@ -9,5 +9,5 @@ class AnalyzeImageUseCase {
   const AnalyzeImageUseCase(this._repo);
   final IScannerRepository _repo;
 
-  Future<ScanResult> call(String rutaImagen) => _repo.analizarImagen(rutaImagen);
+  Future<ScanResult> call(String imagePath) => _repo.analyzeImage(imagePath);
 }

@@ -9,25 +9,25 @@ class AppColors {
   AppColors._();
 
   // Color principal de la app
-  static const primary = Color(0xFF1565C0);
+  static const primary      = Color(0xFF1565C0);
   static const primaryLight = Color(0xFF1E88E5);
 
   // Colores según el estado del medicamento
-  static const vigente    = Color(0xFF2E7D32); // verde
-  static const vencido    = Color(0xFFC62828); // rojo
-  static const invalido   = Color(0xFFE65100); // naranja
-  static const sospechoso = Color(0xFF6A1B9A); // morado
-  static const desconocido = Color(0xFF546E7A); // gris azulado
+  static const valid      = Color(0xFF2E7D32); // verde
+  static const expired    = Color(0xFFC62828); // rojo
+  static const invalid    = Color(0xFFE65100); // naranja
+  static const suspicious = Color(0xFF6A1B9A); // morado
+  static const unknown    = Color(0xFF546E7A); // gris azulado
 
   // Fondos modo claro
-  static const fondoClaro    = Color(0xFFF8F9FA);
-  static const superficieClara = Color(0xFFFFFFFF);
-  static const bordeClaro    = Color(0xFFE0E0E0);
+  static const lightBackground = Color(0xFFF8F9FA);
+  static const lightSurface    = Color(0xFFFFFFFF);
+  static const lightBorder     = Color(0xFFE0E0E0);
 
   // Fondos modo oscuro
-  static const fondoOscuro     = Color(0xFF0F1117);
-  static const superficieOscura = Color(0xFF1A1C1E);
-  static const bordeOscuro     = Color(0xFF2E3138);
+  static const darkBackground = Color(0xFF0F1117);
+  static const darkSurface    = Color(0xFF1A1C1E);
+  static const darkBorder     = Color(0xFF2E3138);
 }
 
 // ─────────────────────────────────────────
@@ -41,7 +41,7 @@ class AppTheme {
   static ThemeData get light => ThemeData(
     useMaterial3: true,
     fontFamily: 'Poppins',
-    scaffoldBackgroundColor: AppColors.fondoClaro,
+    scaffoldBackgroundColor: AppColors.lightBackground,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: Brightness.light,
@@ -58,10 +58,10 @@ class AppTheme {
     // Tarjetas con borde sutil
     cardTheme: CardThemeData(
       elevation: 0,
-      color: AppColors.superficieClara,
+      color: AppColors.lightSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.bordeClaro, width: 0.5),
+        side: const BorderSide(color: AppColors.lightBorder, width: 0.5),
       ),
     ),
 
@@ -83,7 +83,7 @@ class AppTheme {
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
     fontFamily: 'Poppins',
-    scaffoldBackgroundColor: AppColors.fondoOscuro,
+    scaffoldBackgroundColor: AppColors.darkBackground,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryLight,
       brightness: Brightness.dark,
@@ -98,10 +98,10 @@ class AppTheme {
 
     cardTheme: CardThemeData(
       elevation: 0,
-      color: AppColors.superficieOscura,
+      color: AppColors.darkSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.bordeOscuro, width: 0.5),
+        side: const BorderSide(color: AppColors.darkBorder, width: 0.5),
       ),
     ),
 

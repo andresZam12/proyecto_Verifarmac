@@ -1,77 +1,77 @@
-// Card con resumen del medicamento para listas.
-// TODO: mostrar nombre, registro, laboratorio y StatusBadge
+// Card with medicine summary for lists.
+// Shows name, registry, laboratory and StatusBadge
 
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/medicine.dart';
 import 'status_badge.dart';
 
-// Tarjeta que muestra un resumen del medicamento.
-// Se usa en el historial y en resultados de búsqueda.
+// Card that shows a medicine summary.
+// Used in history and search results.
 class MedicineCard extends StatelessWidget {
   const MedicineCard({
     super.key,
-    required this.medicamento,
-    this.alPresionar,
+    required this.medicine,
+    this.onPress,
   });
 
-  final Medicamento   medicamento;
-  final VoidCallback? alPresionar;
+  final Medicine      medicine;
+  final VoidCallback? onPress;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: InkWell(
-        onTap: alPresionar,
+        onTap: onPress,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Fila superior: nombre y badge
+              // Top row: name and badge
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nombre del medicamento
+                  // Medicine name
                   Expanded(
                     child: Text(
-                      medicamento.nombre,
+                      medicine.name,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Badge de estado
-                  StatusBadge(estado: medicamento.estado),
+                  // Status badge
+                  StatusBadge(condition: medicine.condition),
                 ],
               ),
 
               const SizedBox(height: 8),
 
-              // Registro sanitario
+              // Sanitary registry
               _InfoRow(
-                icono: Icons.verified_outlined,
-                texto: medicamento.registroSanitario,
+                icon: Icons.verified_outlined,
+                text: medicine.sanitaryRecord,
               ),
 
               const SizedBox(height: 4),
 
-              // Laboratorio
+              // Laboratory
               _InfoRow(
-                icono: Icons.business_outlined,
-                texto: medicamento.laboratorio,
+                icon: Icons.business_outlined,
+                text: medicine.laboratory,
               ),
 
-              // Ingrediente activo (si existe)
-              if (medicamento.ingredienteActivo != null) ...[
+              // Active ingredient (if present)
+              if (medicine.activeIngredient != null) ...[
                 const SizedBox(height: 4),
                 _InfoRow(
-                  icono: Icons.science_outlined,
-                  texto: '${medicamento.ingredienteActivo}'
-                      '${medicamento.concentracion != null ? ' ${medicamento.concentracion}' : ''}',
+                  icon: Icons.science_outlined,
+                  text: '${medicine.activeIngredient}'
+                      '${medicine.concentration != null ? ' ${medicine.concentration}' : ''}',
                 ),
               ],
             ],
@@ -82,26 +82,26 @@ class MedicineCard extends StatelessWidget {
   }
 }
 
-// Fila de información con ícono y texto
+// Information row with icon and text
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icono, required this.texto});
+  const _InfoRow({required this.icon, required this.text});
 
-  final IconData icono;
-  final String   texto;
+  final IconData icon;
+  final String   text;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Icon(
-          icono,
+          icon,
           size: 14,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            texto,
+            text,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context)
                       .colorScheme

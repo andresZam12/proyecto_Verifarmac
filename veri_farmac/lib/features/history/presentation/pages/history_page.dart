@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_widget.dart';
 import '../../../../shared/widgets/app_loading.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../providers/history_provider.dart';
 import '../widgets/history_entry_tile.dart';
 
@@ -16,41 +17,47 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(historyProvider.notifier).cargar());
+    Future.microtask(() => ref.read(historyProvider.notifier).load());
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(historyProvider);
+    final l10n  = context.l10n;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial'),
+        title: Text(l10n.history),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
-          child: _FiltroEstado(
-            filtroActual: state.filtro,
-            alCambiar: (f) => ref.read(historyProvider.notifier).filtrar(f),
+          child: _StatusFilter(
+            currentFilter: state.filter,
+            onChange: (f) => ref.read(historyProvider.notifier).filterBy(f),
           ),
         ),
       ),
       body: Builder(builder: (context) {
-        if (state.cargando) return const AppLoading(mensaje: 'Cargando historial...');
-        if (state.error != null) return AppErrorWidget(
-          mensaje: state.error!,
-          alReintentar: () => ref.read(historyProvider.notifier).cargar(),
-        );
-        if (state.entradasFiltradas.isEmpty) return const AppEmptyState(
-          titulo: 'Sin registros',
-          descripcion: 'Los medicamentos escaneados aparecerán aquí',
-        );
+        if (state.isLoading) { return AppLoading(message: l10n.loadingHistory); }
+        if (state.error != null) {
+          return AppErrorWidget(
+            message: state.error!,
+            onRetry: () => ref.read(historyProvider.notifier).load(),
+          );
+        }
+        if (state.filteredEntries.isEmpty) {
+          return AppEmptyState(
+            title: l10n.noRecords,
+            description: l10n.scannedMedicinesHere,
+          );
+        }
         return ListView.separated(
-          itemCount: state.entradasFiltradas.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemCount: state.filteredEntries.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, i) {
-            final entrada = state.entradasFiltradas[i];
+            final entry = state.filteredEntries[i];
             return HistoryEntryTile(
-              entrada: entrada,
-              alEliminar: () => _confirmarEliminar(context, entrada.id),
+              entry: entry,
+              onDelete: () => _confirmDelete(context, entry.id),
             );
           },
         );
@@ -58,17 +65,25 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  void _confirmarEliminar(BuildContext context, String id) {
+  void _confirmDelete(BuildContext context, String id) {
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eliminar registro'),
-        content: const Text('¿Seguro que quieres eliminar este registro?'),
+        title: Text(l10n.deleteRecord),
+        content: Text(l10n.confirmDeleteRecord),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
-            onPressed: () { Navigator.pop(context); ref.read(historyProvider.notifier).eliminar(id); },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(historyProvider.notifier).delete(id);
+            },
+            child: Text(l10n.delete,
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -76,26 +91,33 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   }
 }
 
-class _FiltroEstado extends StatelessWidget {
-  const _FiltroEstado({required this.filtroActual, required this.alCambiar});
-  final String?               filtroActual;
-  final ValueChanged<String?> alCambiar;
+class _StatusFilter extends StatelessWidget {
+  const _StatusFilter({required this.currentFilter, required this.onChange});
+  final String?               currentFilter;
+  final ValueChanged<String?> onChange;
 
   @override
   Widget build(BuildContext context) {
-    final filtros = [
-      (label: 'Todos', valor: null), (label: 'Vigentes', valor: 'vigente'),
-      (label: 'Vencidos', valor: 'vencido'), (label: 'Inválidos', valor: 'invalido'),
-      (label: 'Sospechosos', valor: 'sospechoso'),
+    final l10n = context.l10n;
+    final filters = [
+      (label: l10n.all,             value: null),
+      (label: l10n.filterValid,     value: 'vigente'),
+      (label: l10n.filterExpired,   value: 'vencido'),
+      (label: l10n.filterInvalid,   value: 'invalido'),
+      (label: l10n.filterSuspicious,value: 'sospechoso'),
     ];
     return SizedBox(
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: filtros.map((f) => Padding(
+        children: filters.map((f) => Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: FilterChip(label: Text(f.label), selected: filtroActual == f.valor, onSelected: (_) => alCambiar(f.valor)),
+          child: FilterChip(
+            label: Text(f.label),
+            selected: currentFilter == f.value,
+            onSelected: (_) => onChange(f.value),
+          ),
         )).toList(),
       ),
     );

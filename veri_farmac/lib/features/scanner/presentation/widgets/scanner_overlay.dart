@@ -1,15 +1,11 @@
-// Overlay visual sobre la cámara con marco y guías.
+// Marco visual sobre la cámara con área de escaneo resaltada.
 import 'package:flutter/material.dart';
-
 import '../../../../core/theme/app_theme.dart';
 
-// Marco visual que se dibuja encima de la cámara.
-// Oscurece los bordes y deja un área clara en el centro
-// para que el usuario sepa dónde apuntar.
 class ScannerOverlay extends StatelessWidget {
-  const ScannerOverlay({super.key, this.mensaje});
+  const ScannerOverlay({super.key, this.message});
 
-  final String? mensaje;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +23,7 @@ class ScannerOverlay extends StatelessWidget {
           left: 0,
           right: 0,
           child: Text(
-            mensaje ?? 'Apunta al código del medicamento',
+            message ?? 'Aim at the medicine code',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -45,32 +41,32 @@ class ScannerOverlay extends StatelessWidget {
 class _OverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final pinturaNegra = Paint()..color = Colors.black.withValues(alpha: 0.6);
+    final darkPaint = Paint()..color = Colors.black.withValues(alpha: 0.6);
 
     // Área de escaneo — rectángulo centrado
-    final ancho  = size.width * 0.75;
-    final alto   = ancho * 0.5;
-    final left   = (size.width - ancho) / 2;
-    final top    = (size.height - alto) / 2;
-    final areaEscaneo = Rect.fromLTWH(left, top, ancho, alto);
+    final width     = size.width * 0.75;
+    final height    = width * 0.5;
+    final left      = (size.width  - width)  / 2;
+    final top       = (size.height - height) / 2;
+    final scanArea  = Rect.fromLTWH(left, top, width, height);
 
     // Dibuja el fondo oscuro quitando el área de escaneo
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addRRect(RRect.fromRectAndRadius(areaEscaneo, const Radius.circular(12)))
+      ..addRRect(RRect.fromRectAndRadius(scanArea, const Radius.circular(12)))
       ..fillType = PathFillType.evenOdd;
 
-    canvas.drawPath(path, pinturaNegra);
+    canvas.drawPath(path, darkPaint);
 
-    // Dibuja el borde del área de escaneo en color cyan
-    final pinturaBorde = Paint()
+    // Dibuja el borde del área de escaneo
+    final borderPaint = Paint()
       ..color = AppColors.primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(areaEscaneo, const Radius.circular(12)),
-      pinturaBorde,
+      RRect.fromRectAndRadius(scanArea, const Radius.circular(12)),
+      borderPaint,
     );
   }
 

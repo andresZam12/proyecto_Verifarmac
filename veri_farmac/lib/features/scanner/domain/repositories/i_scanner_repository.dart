@@ -1,17 +1,16 @@
-// Contrato del repositorio de escaneo.
-// TODO: definir processBarcodeValue, processOcrText, analyzeImage
+// Scanner repository contract.
 
 import '../entities/scan_result.dart';
 
-// Contrato que define qué puede hacer el repositorio del scanner.
-// La capa de datos lo implementa — el dominio solo conoce esta interfaz.
+// Contract defining what the scanner repository can do.
+// The data layer implements it — the domain only knows this interface.
 abstract class IScannerRepository {
-  // Procesa un código de barras y busca el medicamento
-  Future<ScanResult> procesarBarcode(String barcode);
+  // Processes a barcode and looks up the medicine
+  Future<ScanResult> processBarcode(String barcode);
 
-  // Procesa texto extraído con OCR del empaque
-  Future<ScanResult> procesarOcr(String texto);
+  // Processes text extracted via OCR from the packaging
+  Future<ScanResult> processOcr(String text);
 
-  // Analiza la imagen del empaque con Claude API
-  Future<ScanResult> analizarImagen(String rutaImagen);
+  // Analyzes the packaging image with Claude API
+  Future<ScanResult> analyzeImage(String imagePath);
 }

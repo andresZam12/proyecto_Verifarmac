@@ -1,25 +1,26 @@
 // Toggle para cambiar entre modo Barcode y OCR.
 
 import 'package:flutter/material.dart';
-
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 
 // Modos de escaneo disponibles
-enum ModoEscaneo { barcode, ocr }
+enum ScanMode { barcode, ocr }
 
 // Toggle que permite cambiar entre escaneo por código de barras y por texto OCR.
 class ScanModeToggle extends StatelessWidget {
   const ScanModeToggle({
     super.key,
-    required this.modoActual,
-    required this.alCambiar,
+    required this.currentMode,
+    required this.onChange,
   });
 
-  final ModoEscaneo modoActual;
-  final ValueChanged<ModoEscaneo> alCambiar;
+  final ScanMode                currentMode;
+  final ValueChanged<ScanMode>  onChange;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.4),
@@ -29,18 +30,18 @@ class ScanModeToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _BotonModo(
-            icono: Icons.qr_code_scanner_rounded,
-            etiqueta: 'Código',
-            seleccionado: modoActual == ModoEscaneo.barcode,
-            alPresionar: () => alCambiar(ModoEscaneo.barcode),
+          _ModeButton(
+            icon:       Icons.qr_code_scanner_rounded,
+            label:      l10n.scanModeBarcode,
+            isSelected: currentMode == ScanMode.barcode,
+            onPress:    () => onChange(ScanMode.barcode),
           ),
           const SizedBox(width: 4),
-          _BotonModo(
-            icono: Icons.text_fields_rounded,
-            etiqueta: 'Texto',
-            seleccionado: modoActual == ModoEscaneo.ocr,
-            alPresionar: () => alCambiar(ModoEscaneo.ocr),
+          _ModeButton(
+            icon:       Icons.text_fields_rounded,
+            label:      l10n.scanModeOcr,
+            isSelected: currentMode == ScanMode.ocr,
+            onPress:    () => onChange(ScanMode.ocr),
           ),
         ],
       ),
@@ -49,36 +50,36 @@ class ScanModeToggle extends StatelessWidget {
 }
 
 // Botón individual del toggle
-class _BotonModo extends StatelessWidget {
-  const _BotonModo({
-    required this.icono,
-    required this.etiqueta,
-    required this.seleccionado,
-    required this.alPresionar,
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onPress,
   });
 
-  final IconData icono;
-  final String   etiqueta;
-  final bool     seleccionado;
-  final VoidCallback alPresionar;
+  final IconData     icon;
+  final String       label;
+  final bool         isSelected;
+  final VoidCallback onPress;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: alPresionar,
+      onTap: onPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: seleccionado ? AppColors.primary : Colors.transparent,
+          color: isSelected ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           children: [
-            Icon(icono, size: 16, color: Colors.white),
+            Icon(icon, size: 16, color: Colors.white),
             const SizedBox(width: 6),
             Text(
-              etiqueta,
+              label,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,

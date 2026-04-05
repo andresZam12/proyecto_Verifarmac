@@ -1,13 +1,11 @@
 // Indicador de carga reutilizable.
 import 'package:flutter/material.dart';
 
-// Widget de carga que se usa mientras espera una respuesta.
-// Ejemplo: mientras consulta el INVIMA o carga el historial.
 class AppLoading extends StatelessWidget {
-  const AppLoading({super.key, this.mensaje});
+  const AppLoading({super.key, this.message});
 
   // Mensaje opcional debajo del spinner
-  final String? mensaje;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -16,12 +14,15 @@ class AppLoading extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(),
-          if (mensaje != null) ...[
+          if (message != null) ...[
             const SizedBox(height: 16),
             Text(
-              mensaje!,
+              message!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
                   ),
             ),
           ],

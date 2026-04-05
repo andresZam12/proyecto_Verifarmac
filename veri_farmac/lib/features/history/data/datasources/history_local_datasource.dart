@@ -1,54 +1,66 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../../core/constants/app_strings.dart';
 import '../models/history_entry_model.dart';
 
 class HistoryLocalDataSource {
-  static const _clave = 'historial_escaneos';
+  static const _storageKey = AppStrings.prefHistoryKey;
 
-  Future<void> guardar(HistoryEntryModel entrada) async {
+  Future<void> save(HistoryEntryModel entry) async {
     final prefs = await SharedPreferences.getInstance();
-    final lista = await _obtenerTodos();
-    lista.insert(0, entrada.toJson());
-    await prefs.setString(_clave, jsonEncode(lista));
+    final list  = await _fetchAll();
+    list.insert(0, entry.toJson());
+    await prefs.setString(_storageKey, jsonEncode(list));
   }
 
-  Future<List<HistoryEntryModel>> obtener({int pagina = 0, int porPagina = 20}) async {
-    final lista  = await _obtenerTodos();
-    final inicio = pagina * porPagina;
-    if (inicio >= lista.length) return [];
-    final fin = (inicio + porPagina).clamp(0, lista.length);
-    return lista.sublist(inicio, fin).map((j) => HistoryEntryModel.fromJson(j)).toList();
+  Future<List<HistoryEntryModel>> fetch({int page = 0, int pageSize = 20}) async {
+    final list  = await _fetchAll();
+    final start = page * pageSize;
+    if (start >= list.length) return [];
+    final end = (start + pageSize).clamp(0, list.length);
+    return list.sublist(start, end).map((j) => HistoryEntryModel.fromJson(j)).toList();
   }
 
-  Future<void> eliminar(String id) async {
+  Future<void> delete(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    final lista = await _obtenerTodos();
-    lista.removeWhere((e) => e['id'] == id);
-    await prefs.setString(_clave, jsonEncode(lista));
+    final list  = await _fetchAll();
+    list.removeWhere((e) => e['id'] == id);
+    await prefs.setString(_storageKey, jsonEncode(list));
   }
 
-  Future<List<HistoryEntryModel>> obtenerNoSincronizados() async {
-    final lista = await _obtenerTodos();
-    return lista.where((e) => e['sincronizado'] == false).map((j) => HistoryEntryModel.fromJson(j)).toList();
+  Future<List<HistoryEntryModel>> fetchUnsynced() async {
+    final list = await _fetchAll();
+    return list
+        .where((e) => e['sincronizado'] == false)
+        .map((j) => HistoryEntryModel.fromJson(j))
+        .toList();
   }
 
-  Future<void> marcarSincronizado(String id) async {
+  Future<void> markSynced(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    final lista = await _obtenerTodos();
-    for (final e in lista) { if (e['id'] == id) { e['sincronizado'] = true; break; } }
-    await prefs.setString(_clave, jsonEncode(lista));
+    final list  = await _fetchAll();
+    for (final e in list) {
+      if (e['id'] == id) {
+        e['sincronizado'] = true;
+        break;
+      }
+    }
+    await prefs.setString(_storageKey, jsonEncode(list));
   }
 
-  Future<Map<String, int>> obtenerEstadisticas() async {
-    final lista = await _obtenerTodos();
+  Future<Map<String, int>> getStatistics() async {
+    final list  = await _fetchAll();
     final stats = <String, int>{};
-    for (final e in lista) { final est = e['estado'] as String; stats[est] = (stats[est] ?? 0) + 1; }
+    for (final e in list) {
+      final s = e['estado'] as String;
+      stats[s] = (stats[s] ?? 0) + 1;
+    }
     return stats;
   }
 
-  Future<List<Map<String, dynamic>>> _obtenerTodos() async {
+  Future<List<Map<String, dynamic>>> _fetchAll() async {
     final prefs = await SharedPreferences.getInstance();
-    final json  = prefs.getString(_clave);
+    final json  = prefs.getString(_storageKey);
     if (json == null) return [];
     return (jsonDecode(json) as List).cast<Map<String, dynamic>>();
   }

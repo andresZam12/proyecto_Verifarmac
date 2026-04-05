@@ -35,7 +35,7 @@ final sl = GetIt.instance;
 
 // Registra todas las dependencias de la app.
 // Se llama una sola vez en main.dart antes de runApp.
-Future<void> configurarDependencias() async {
+Future<void> setupDependencies() async {
   // ── Utilidades ──────────────────────────────────────────────
   sl.registerLazySingleton(() => Connectivity());
   sl.registerLazySingleton<INetworkInfo>(

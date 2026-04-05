@@ -8,60 +8,92 @@ import '../../domain/usecases/analyze_image_usecase.dart';
 import '../../domain/usecases/scan_by_barcode_usecase.dart';
 import '../../domain/usecases/scan_by_ocr_usecase.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../../core/constants/app_strings.dart';
 
-enum EstadoScanner { inactivo, escaneando, analizando, exitoso, error }
+enum ScannerStatus { idle, scanning, analyzing, success, error }
 
 class ScannerState {
-  const ScannerState({this.estado = EstadoScanner.inactivo, this.resultado, this.error});
-  final EstadoScanner estado;
-  final ScanResult?   resultado;
+  const ScannerState({
+    this.status = ScannerStatus.idle,
+    this.result,
+    this.error,
+  });
+  final ScannerStatus status;
+  final ScanResult?   result;
   final String?       error;
 }
 
 class ScannerNotifier extends StateNotifier<ScannerState> {
-  ScannerNotifier(this._porBarcode, this._porOcr, this._porImagen) : super(const ScannerState());
-  final ScanByBarcodeUseCase _porBarcode;
-  final ScanByOcrUseCase     _porOcr;
-  final AnalyzeImageUseCase  _porImagen;
+  ScannerNotifier(this._byBarcode, this._byOcr, this._byImage)
+      : super(const ScannerState());
 
-  Future<void> escanearBarcode(String barcode) async {
-    state = const ScannerState(estado: EstadoScanner.analizando);
+  final ScanByBarcodeUseCase _byBarcode;
+  final ScanByOcrUseCase     _byOcr;
+  final AnalyzeImageUseCase  _byImage;
+
+  Future<void> scanBarcode(String barcode) async {
+    state = const ScannerState(status: ScannerStatus.analyzing);
     try {
-      state = ScannerState(estado: EstadoScanner.exitoso, resultado: await _porBarcode(barcode));
+      state = ScannerState(
+        status: ScannerStatus.success,
+        result: await _byBarcode(barcode),
+      );
     } catch (_) {
-      state = const ScannerState(estado: EstadoScanner.error, error: 'Error al procesar el código');
+      state = const ScannerState(
+        status: ScannerStatus.error,
+        error: AppStrings.errorProcessBarcode,
+      );
     }
   }
 
-  Future<void> escanearOcr(String texto) async {
-    state = const ScannerState(estado: EstadoScanner.analizando);
+  Future<void> scanOcr(String text) async {
+    state = const ScannerState(status: ScannerStatus.analyzing);
     try {
-      state = ScannerState(estado: EstadoScanner.exitoso, resultado: await _porOcr(texto));
+      state = ScannerState(
+        status: ScannerStatus.success,
+        result: await _byOcr(text),
+      );
     } catch (_) {
-      state = const ScannerState(estado: EstadoScanner.error, error: 'Error al procesar el texto');
+      state = const ScannerState(
+        status: ScannerStatus.error,
+        error: AppStrings.errorProcessText,
+      );
     }
   }
 
-  Future<void> analizarImagen(String rutaImagen) async {
-    state = const ScannerState(estado: EstadoScanner.analizando);
+  Future<void> analyzeImage(String imagePath) async {
+    state = const ScannerState(status: ScannerStatus.analyzing);
     try {
-      state = ScannerState(estado: EstadoScanner.exitoso, resultado: await _porImagen(rutaImagen));
+      state = ScannerState(
+        status: ScannerStatus.success,
+        result: await _byImage(imagePath),
+      );
     } catch (_) {
-      state = const ScannerState(estado: EstadoScanner.error, error: 'Error al analizar la imagen');
+      state = const ScannerState(
+        status: ScannerStatus.error,
+        error: AppStrings.errorAnalyzeImage,
+      );
     }
   }
 
-  void reiniciar() => state = const ScannerState();
+  void reset() => state = const ScannerState();
 }
 
 final _dioProvider        = Provider((ref) => DioClient().dio);
-final _repositoryProvider = Provider((ref) => ScannerRepositoryImpl(
-  invima: InvimaDataSource(),
-  ocr:    OcrDataSource(),
-  claude: ClaudeAiDataSource(ref.read(_dioProvider)),
-));
+final _repositoryProvider = Provider(
+  (ref) => ScannerRepositoryImpl(
+    invima: InvimaDataSource(),
+    ocr:    OcrDataSource(),
+    claude: ClaudeAiDataSource(ref.read(_dioProvider)),
+  ),
+);
 
-final scannerProvider = StateNotifierProvider<ScannerNotifier, ScannerState>((ref) {
+final scannerProvider =
+    StateNotifierProvider<ScannerNotifier, ScannerState>((ref) {
   final repo = ref.read(_repositoryProvider);
-  return ScannerNotifier(ScanByBarcodeUseCase(repo), ScanByOcrUseCase(repo), AnalyzeImageUseCase(repo));
+  return ScannerNotifier(
+    ScanByBarcodeUseCase(repo),
+    ScanByOcrUseCase(repo),
+    AnalyzeImageUseCase(repo),
+  );
 });
