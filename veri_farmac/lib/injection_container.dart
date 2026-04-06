@@ -12,12 +12,11 @@ import 'features/auth/domain/usecases/sign_out_usecase.dart';
 
 import 'features/scanner/data/datasources/barcode_datasource.dart';
 import 'features/scanner/data/datasources/claude_ai_datasource.dart';
-import 'features/scanner/data/datasources/invima_datasource.dart';
 import 'features/scanner/data/datasources/ocr_datasource.dart';
 import 'features/scanner/data/repositories/scanner_repository_impl.dart';
 import 'features/scanner/domain/repositories/i_scanner_repository.dart';
 
-import 'features/medicine_detail/data/datasources/invima_mock_datasource.dart';
+import 'features/medicine_detail/data/datasources/invima_api_datasource.dart';
 import 'features/medicine_detail/data/repositories/medicine_repository_impl.dart';
 import 'features/medicine_detail/domain/repositories/i_medicine_repository.dart';
 
@@ -54,20 +53,19 @@ Future<void> setupDependencies() async {
   // ── Scanner ─────────────────────────────────────────────────
   sl.registerLazySingleton(() => BarcodeDataSource());
   sl.registerLazySingleton(() => OcrDataSource());
-  sl.registerLazySingleton(() => InvimaDataSource());
   sl.registerLazySingleton(() => ClaudeAiDataSource(sl<DioClient>().dio));
   sl.registerLazySingleton<IScannerRepository>(
     () => ScannerRepositoryImpl(
-      invima: sl<InvimaDataSource>(),
+      invima: sl<InvimaApiDataSource>(),
       ocr:    sl<OcrDataSource>(),
       claude: sl<ClaudeAiDataSource>(),
     ),
   );
 
   // ── Medicine detail ─────────────────────────────────────────
-  sl.registerLazySingleton(() => InvimaMockDataSource());
+  sl.registerLazySingleton(() => InvimaApiDataSource());
   sl.registerLazySingleton<IMedicineRepository>(
-    () => MedicineRepositoryImpl(sl<InvimaMockDataSource>()),
+    () => MedicineRepositoryImpl(sl<InvimaApiDataSource>()),
   );
 
   // ── History ─────────────────────────────────────────────────

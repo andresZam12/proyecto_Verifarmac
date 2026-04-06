@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(del \"c:\\\\Users\\\\andre\\\\INGENIERIA_SOFTWARE\\\\S6\\\\FLUTTER\\\\VERIFARMAC\\\\veri_farmac\\\\l10n.yaml\")"
+      "Bash(del \"c:\\\\Users\\\\andre\\\\INGENIERIA_SOFTWARE\\\\S6\\\\FLUTTER\\\\VERIFARMAC\\\\veri_farmac\\\\l10n.yaml\")",
+      "Bash(flutter analyze:*)",
+      "Bash(rm \"c:/Users/andre/INGENIERIA_SOFTWARE/S6/FLUTTER/VERIFARMAC/veri_farmac/lib/l10n/app_en.arb\")",
+      "Bash(rm \"c:/Users/andre/INGENIERIA_SOFTWARE/S6/FLUTTER/VERIFARMAC/veri_farmac/lib/l10n/app_es.arb\")"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/claude_ai_datasource.dart';
-import '../../data/datasources/invima_datasource.dart';
 import '../../data/datasources/ocr_datasource.dart';
+import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../data/repositories/scanner_repository_impl.dart';
 import '../../domain/entities/scan_result.dart';
 import '../../domain/usecases/analyze_image_usecase.dart';
@@ -82,7 +82,7 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
 final _dioProvider        = Provider((ref) => DioClient().dio);
 final _repositoryProvider = Provider(
   (ref) => ScannerRepositoryImpl(
-    invima: InvimaDataSource(),
+    invima: InvimaApiDataSource(),
     ocr:    OcrDataSource(),
     claude: ClaudeAiDataSource(ref.read(_dioProvider)),
   ),

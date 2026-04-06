@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/invima_mock_datasource.dart';
+import '../../data/datasources/invima_api_datasource.dart';
 import '../../data/repositories/medicine_repository_impl.dart';
 import '../../domain/entities/medicine.dart';
 import '../../domain/usecases/get_medicine_usecase.dart';
@@ -26,7 +26,6 @@ class MedicineNotifier extends StateNotifier<MedicineState> {
   final GetMedicineByBarcodeUseCase  _byBarcode;
   final GetMedicineByRegistryUseCase _byRegistry;
 
-  // Carga el medicamento por código de barras
   Future<void> loadByBarcode(String barcode) async {
     state = const MedicineState(status: MedicineStatus.loading);
     try {
@@ -39,7 +38,6 @@ class MedicineNotifier extends StateNotifier<MedicineState> {
     }
   }
 
-  // Carga el medicamento por registro INVIMA
   Future<void> loadByRegistry(String registry) async {
     state = const MedicineState(status: MedicineStatus.loading);
     try {
@@ -53,7 +51,7 @@ class MedicineNotifier extends StateNotifier<MedicineState> {
   }
 }
 
-final _datasourceProvider = Provider((_) => InvimaMockDataSource());
+final _datasourceProvider = Provider((_) => InvimaApiDataSource());
 final _repositoryProvider = Provider(
   (ref) => MedicineRepositoryImpl(ref.read(_datasourceProvider)),
 );

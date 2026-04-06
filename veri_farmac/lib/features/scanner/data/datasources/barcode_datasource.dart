@@ -1,10 +1,10 @@
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class BarcodeDataSource {
-  final MobileScannerController controlador = MobileScannerController(
+  final MobileScannerController controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
   );
-  Future<void> toggleLinterna() async => await controlador.toggleTorch();
-  void dispose() => controlador.dispose();
+  Future<void> toggleTorch() async => await controller.toggleTorch();
+  void dispose() => controller.dispose();
 }

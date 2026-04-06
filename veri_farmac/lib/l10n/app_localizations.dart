@@ -116,7 +116,7 @@ abstract class AppLocalizations {
   String get allowLocation;
 }
 
-// Shortcut: context.l10n instead of AppLocalizations.of(context)!
+// Atajo: context.l10n en lugar de AppLocalizations.of(context)!
 extension AppLocalizationsX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this)!;
 }
