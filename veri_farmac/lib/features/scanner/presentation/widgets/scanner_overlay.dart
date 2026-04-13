@@ -3,9 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class ScannerOverlay extends StatelessWidget {
-  const ScannerOverlay({super.key, this.message});
+  const ScannerOverlay({
+    super.key,
+    this.message,
+    this.highlight = false,
+  });
 
   final String? message;
+  // true cuando hay un código detectado — cambia el borde a verde
+  final bool    highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -13,11 +19,11 @@ class ScannerOverlay extends StatelessWidget {
       children: [
         // Fondo oscuro con el recorte del área de escaneo
         CustomPaint(
-          painter: _OverlayPainter(),
+          painter: _OverlayPainter(highlight: highlight),
           child: const SizedBox.expand(),
         ),
 
-        // Mensaje de instrucciones en la parte inferior
+        // Mensaje de instrucciones
         Positioned(
           bottom: 120,
           left: 0,
@@ -37,32 +43,32 @@ class ScannerOverlay extends StatelessWidget {
   }
 }
 
-// Dibuja el fondo oscuro con el recorte rectangular del centro
 class _OverlayPainter extends CustomPainter {
+  const _OverlayPainter({this.highlight = false});
+  final bool highlight;
+
   @override
   void paint(Canvas canvas, Size size) {
     final darkPaint = Paint()..color = Colors.black.withValues(alpha: 0.6);
 
-    // Área de escaneo — rectángulo centrado
-    final width     = size.width * 0.75;
-    final height    = width * 0.5;
-    final left      = (size.width  - width)  / 2;
-    final top       = (size.height - height) / 2;
-    final scanArea  = Rect.fromLTWH(left, top, width, height);
+    final width    = size.width * 0.75;
+    final height   = width * 0.5;
+    final left     = (size.width  - width)  / 2;
+    final top      = (size.height - height) / 2;
+    final scanArea = Rect.fromLTWH(left, top, width, height);
 
-    // Dibuja el fondo oscuro quitando el área de escaneo
+    // Fondo oscuro con recorte
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(RRect.fromRectAndRadius(scanArea, const Radius.circular(12)))
       ..fillType = PathFillType.evenOdd;
-
     canvas.drawPath(path, darkPaint);
 
-    // Dibuja el borde del área de escaneo
+    // Borde: azul normal, verde cuando hay detección
     final borderPaint = Paint()
-      ..color = AppColors.primary
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
+      ..color       = highlight ? Colors.green : AppColors.primary
+      ..style       = PaintingStyle.stroke
+      ..strokeWidth = highlight ? 3.5 : 2.5;
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(scanArea, const Radius.circular(12)),
@@ -71,5 +77,5 @@ class _OverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(_OverlayPainter old) => old.highlight != highlight;
 }
