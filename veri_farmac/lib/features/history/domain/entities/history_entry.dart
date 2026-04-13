@@ -1,28 +1,26 @@
-// Entidad de entrada del historial.
-// TODO: definir id, scanResult, pharmacyId, createdAt, latitude, longitude
+// Entidad de entrada del historial — Dart puro, sin dependencias externas.
+// Representa un escaneo guardado localmente.
 
-// Representa un escaneo guardado en el historial.
-// Dart puro — sin dependencias externas.
 class HistoryEntry {
   const HistoryEntry({
     required this.id,
-    required this.nombreMedicamento,
-    required this.registroSanitario,
-    required this.estado,
-    required this.metodo,
-    required this.creadoEn,
-    this.laboratorio,
-    this.confianza = 0.0,
-    this.sincronizado = false,
+    required this.medicineName,
+    required this.sanitaryRecord,
+    required this.status,
+    required this.method,
+    required this.createdAt,
+    this.laboratory,
+    this.confidence = 0.0,
+    this.synced = false,
   });
 
   final String   id;
-  final String   nombreMedicamento;
-  final String   registroSanitario;
-  final String   estado;           // vigente, vencido, invalido, etc.
-  final String   metodo;           // barcode, ocr, visual
-  final DateTime creadoEn;
-  final String?  laboratorio;
-  final double   confianza;        // 0.0 a 1.0
-  final bool     sincronizado;     // si ya se subió a Supabase
+  final String   medicineName;
+  final String   sanitaryRecord;
+  final String   status;       // vigente, vencido, invalido, etc. (valor del API)
+  final String   method;       // barcode, ocr, visual
+  final DateTime createdAt;
+  final String?  laboratory;
+  final double   confidence;   // 0.0 a 1.0
+  final bool     synced;       // si ya se subió a Supabase
 }

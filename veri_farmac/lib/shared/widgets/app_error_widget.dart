@@ -1,20 +1,18 @@
-// Widget de error con botón de reintentar.
-
-import 'package:flutter/material.dart';
-
 // Widget de error reutilizable.
 // Se usa cuando una llamada a la API falla o no hay conexión.
+
+import 'package:flutter/material.dart';
+import '../../core/constants/app_strings.dart';
+
 class AppErrorWidget extends StatelessWidget {
   const AppErrorWidget({
     super.key,
-    required this.mensaje,
-    this.alReintentar,
+    required this.message,
+    this.onRetry,
   });
 
-  final String mensaje;
-
-  // Callback opcional — si se pasa, muestra el botón "Reintentar"
-  final VoidCallback? alReintentar;
+  final String       message;
+  final VoidCallback? onRetry; // si se pasa, muestra el botón "Reintentar"
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +29,16 @@ class AppErrorWidget extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              mensaje,
+              message,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            if (alReintentar != null) ...[
+            if (onRetry != null) ...[
               const SizedBox(height: 20),
               OutlinedButton.icon(
-                onPressed: alReintentar,
+                onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Reintentar'),
+                label: const Text(AppStrings.retry),
               ),
             ],
           ],

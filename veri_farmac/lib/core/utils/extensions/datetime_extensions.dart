@@ -1,26 +1,26 @@
-// Extensiones para DateTime.
+// Extensions for DateTime.
 extension DateTimeExtension on DateTime {
-  // Fecha corta: '15 ene 2024'
-  String get fechaCorta {
-    const meses = [
-      'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-      'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+  // Short date: '15 Jan 2024'
+  String get shortDate {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    return '$day ${meses[month - 1]} $year';
+    return '$day ${months[month - 1]} $year';
   }
 
-  // Fecha relativa: 'Hoy', 'Ayer' o la fecha corta
-  String get fechaRelativa {
-    final hoy = DateTime.now();
-    final diferencia = DateTime(hoy.year, hoy.month, hoy.day)
+  // Relative date: 'Today', 'Yesterday' or the short date
+  String get relativeDate {
+    final today = DateTime.now();
+    final diff = DateTime(today.year, today.month, today.day)
         .difference(DateTime(year, month, day))
         .inDays;
 
-    if (diferencia == 0) return 'Hoy';
-    if (diferencia == 1) return 'Ayer';
-    return fechaCorta;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return shortDate;
   }
 
-  // Verifica si la fecha ya pasó (útil para registros vencidos)
-  bool get estaVencido => isBefore(DateTime.now());
+  // Whether the date has already passed (useful for expired records)
+  bool get isExpired => isBefore(DateTime.now());
 }

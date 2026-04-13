@@ -1,48 +1,57 @@
-// Pantalla de selección de idioma (onboarding y settings).
-// TODO: mostrar opciones ES/EN con banderas y guardar en SharedPreferences
+// Pantalla de selección de idioma — accesible desde Settings.
+// Ya no aparece en el flujo de inicio; el usuario la accede cuando quiera.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 
-// Pantalla de selección de idioma.
-// Se usa en el onboarding (primera vez) y en ajustes.
 class LanguagePage extends ConsumerWidget {
   const LanguagePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final localeActual = ref.watch(localeNotifierProvider);
+    final currentLocale = ref.watch(localeNotifierProvider);
+    final l10n          = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Idioma')),
+      appBar: AppBar(title: Text(l10n.language)),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Opción español
-            _OpcionIdioma(
-              bandera: '🇨🇴',
-              nombre: 'Español',
-              seleccionado: localeActual?.languageCode == 'es' ||
-                  localeActual == null,
-              alPresionar: () => ref
-                  .read(localeNotifierProvider.notifier)
-                  .cambiarIdioma(const Locale('es')),
+            const SizedBox(height: 20),
+            Text(
+              l10n.chooseLanguage,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-
+            const SizedBox(height: 32),
+            _LanguageOption(
+              flag:       '🇨🇴',
+              name:       l10n.spanish,
+              isSelected: currentLocale?.languageCode != 'en',
+              onPress: () {
+                ref
+                    .read(localeNotifierProvider.notifier)
+                    .changeLocale(const Locale('es'));
+                Navigator.pop(context);
+              },
+            ),
             const SizedBox(height: 12),
-
-            // Opción inglés
-            _OpcionIdioma(
-              bandera: '🇺🇸',
-              nombre: 'English',
-              seleccionado: localeActual?.languageCode == 'en',
-              alPresionar: () => ref
-                  .read(localeNotifierProvider.notifier)
-                  .cambiarIdioma(const Locale('en')),
+            _LanguageOption(
+              flag:       '🇺🇸',
+              name:       l10n.english,
+              isSelected: currentLocale?.languageCode == 'en',
+              onPress: () {
+                ref
+                    .read(localeNotifierProvider.notifier)
+                    .changeLocale(const Locale('en'));
+                Navigator.pop(context);
+              },
             ),
           ],
         ),
@@ -51,58 +60,55 @@ class LanguagePage extends ConsumerWidget {
   }
 }
 
-// Tarjeta de opción de idioma
-class _OpcionIdioma extends StatelessWidget {
-  const _OpcionIdioma({
-    required this.bandera,
-    required this.nombre,
-    required this.seleccionado,
-    required this.alPresionar,
+class _LanguageOption extends StatelessWidget {
+  const _LanguageOption({
+    required this.flag,
+    required this.name,
+    required this.isSelected,
+    required this.onPress,
   });
 
-  final String       bandera;
-  final String       nombre;
-  final bool         seleccionado;
-  final VoidCallback alPresionar;
+  final String       flag;
+  final String       name;
+  final bool         isSelected;
+  final VoidCallback onPress;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: alPresionar,
+      onTap: onPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado
+            color: isSelected
                 ? AppColors.primary
-                : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-            width: seleccionado ? 2 : 0.5,
+                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 0.5,
           ),
-          color: seleccionado
-              ? AppColors.primary.withOpacity(0.05)
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.05)
               : Colors.transparent,
         ),
-        child: Row(
-          children: [
-            Text(bandera, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                nombre,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: seleccionado ? AppColors.primary : null,
-                ),
+        child: Row(children: [
+          Text(flag, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              name,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? AppColors.primary : null,
               ),
             ),
-            if (seleccionado)
-              const Icon(Icons.check_circle_rounded,
-                  color: AppColors.primary, size: 20),
-          ],
-        ),
+          ),
+          if (isSelected)
+            const Icon(Icons.check_circle_rounded,
+                color: AppColors.primary, size: 20),
+        ]),
       ),
     );
   }

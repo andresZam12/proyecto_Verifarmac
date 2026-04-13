@@ -1,11 +1,9 @@
-// Pantalla de login con Google.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/google_sign_in_button.dart';
 
@@ -15,17 +13,14 @@ class LoginPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    final estaCargando = authState.estado == AuthEstado.cargando;
+    final isLoading = authState.status == AuthStatus.loading;
+    final l10n      = context.l10n;
 
-    // Navega al dashboard cuando la autenticación es exitosa
-    ref.listen(authProvider, (anterior, actual) {
-      if (actual.estaAutenticado) {
-        context.go(AppRoutes.dashboard);
-      }
-      if (actual.estado == AuthEstado.error && actual.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(actual.error!)),
-        );
+    ref.listen(authProvider, (_, current) {
+      if (current.isAuthenticated) context.go(AppRoutes.dashboard);
+      if (current.status == AuthStatus.error && current.error != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(current.error!)));
       }
     });
 
@@ -36,12 +31,11 @@ class LoginPage extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
               Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(
@@ -50,39 +44,29 @@ class LoginPage extends ConsumerWidget {
                   color: AppColors.primary,
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              // Título
               Text(
-                'Bienvenido',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                l10n.welcome,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
-
               const SizedBox(height: 8),
-
-              // Subtítulo
               Text(
-                'Inicia sesión para verificar\ntus medicamentos',
+                l10n.signInSubtitle,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.6),
+                          .withValues(alpha: 0.6),
                     ),
               ),
-
               const SizedBox(height: 48),
-
-              // Botón de Google
               GoogleSignInButton(
-                estaCargando: estaCargando,
-                alPresionar: () {
-                  ref.read(authProvider.notifier).signInWithGoogle();
-                },
+                isLoading: isLoading,
+                onPress: () => ref.read(authProvider.notifier).signInWithGoogle(),
               ),
             ],
           ),

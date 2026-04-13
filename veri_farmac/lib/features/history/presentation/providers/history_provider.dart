@@ -1,98 +1,81 @@
-// Estado del historial con Riverpod.
-// TODO: implementar HistoryNotifier con paginación y filtros
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../data/datasources/history_local_datasource.dart';
 import '../../data/datasources/history_remote_datasource.dart';
 import '../../data/repositories/history_repository_impl.dart';
 import '../../domain/entities/history_entry.dart';
 import '../../domain/usecases/history_usecases.dart';
+import '../../../../../core/constants/app_strings.dart';
 
 class HistoryState {
   const HistoryState({
-    this.entradas = const [],
-    this.cargando = false,
+    this.entries   = const [],
+    this.isLoading = false,
     this.error,
-    this.filtro,
+    this.filter,
   });
-
-  final List<HistoryEntry> entradas;
-  final bool               cargando;
+  final List<HistoryEntry> entries;
+  final bool               isLoading;
   final String?            error;
-  final String?            filtro;    // vigente, vencido, invalido, etc.
+  final String?            filter;
 
-  // Entradas filtradas según el estado seleccionado
-  List<HistoryEntry> get entradasFiltradas {
-    if (filtro == null) return entradas;
-    return entradas.where((e) => e.estado == filtro).toList();
-  }
+  List<HistoryEntry> get filteredEntries =>
+      filter == null ? entries : entries.where((e) => e.status == filter).toList();
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier(this._obtener, this._eliminar, this._sincronizar)
+  HistoryNotifier(this._fetch, this._delete, this._sync)
       : super(const HistoryState());
 
-  final ObtenerHistorialUseCase    _obtener;
-  final EliminarHistorialUseCase   _eliminar;
-  final SincronizarHistorialUseCase _sincronizar;
+  final FetchHistoryUseCase       _fetch;
+  final DeleteHistoryEntryUseCase _delete;
+  final SyncHistoryUseCase        _sync;
 
-  // Carga el historial
-  Future<void> cargar() async {
-    state = const HistoryState(cargando: true);
+  Future<void> load() async {
+    state = const HistoryState(isLoading: true);
     try {
-      final entradas = await _obtener();
-      state = HistoryState(entradas: entradas);
-    } catch (e) {
-      state = HistoryState(error: 'Error al cargar el historial');
+      state = HistoryState(entries: await _fetch());
+    } catch (_) {
+      state = const HistoryState(error: AppStrings.errorLoadingHistory);
     }
   }
 
-  // Elimina una entrada
-  Future<void> eliminar(String id) async {
+  Future<void> delete(String id) async {
     try {
-      await _eliminar(id);
-      // Remueve la entrada de la lista sin recargar todo
+      await _delete(id);
       state = HistoryState(
-        entradas: state.entradas.where((e) => e.id != id).toList(),
-        filtro: state.filtro,
+        entries: state.entries.where((e) => e.id != id).toList(),
+        filter: state.filter,
       );
-    } catch (e) {
-      state = HistoryState(
-        entradas: state.entradas,
-        error: 'Error al eliminar',
-      );
+    } catch (_) {
+      state = HistoryState(entries: state.entries, error: AppStrings.errorDeleting);
     }
   }
 
-  // Cambia el filtro de estado
-  void filtrar(String? estado) {
-    state = HistoryState(entradas: state.entradas, filtro: estado);
-  }
+  void filterBy(String? status) =>
+      state = HistoryState(entries: state.entries, filter: status);
 
-  // Sincroniza con Supabase
-  Future<void> sincronizar(String userId) async {
+  Future<void> sync(String userId) async {
     try {
-      await _sincronizar(userId);
+      await _sync(userId);
     } catch (_) {}
   }
 }
 
-// Providers
-final _localProvider  = Provider((_) => HistoryLocalDataSource());
-final _remotoProvider = Provider((_) => HistoryRemoteDataSource());
-
-final _repositoryProvider = Provider((ref) => HistoryRepositoryImpl(
-      ref.read(_localProvider),
-      ref.read(_remotoProvider),
-    ));
+final _localProvider      = Provider((_) => HistoryLocalDataSource());
+final _remoteProvider     = Provider((_) => HistoryRemoteDataSource());
+final _repositoryProvider = Provider(
+  (ref) => HistoryRepositoryImpl(
+    ref.read(_localProvider),
+    ref.read(_remoteProvider),
+  ),
+);
 
 final historyProvider =
     StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
   final repo = ref.read(_repositoryProvider);
   return HistoryNotifier(
-    ObtenerHistorialUseCase(repo),
-    EliminarHistorialUseCase(repo),
-    SincronizarHistorialUseCase(repo),
+    FetchHistoryUseCase(repo),
+    DeleteHistoryEntryUseCase(repo),
+    SyncHistoryUseCase(repo),
   );
 });

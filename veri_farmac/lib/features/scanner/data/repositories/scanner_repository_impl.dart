@@ -1,102 +1,99 @@
-// Implementación del repositorio de escaneo.
-// TODO: orquestar barcode + OCR + INVIMA, convertir excepciones a Failure
-
 import 'package:uuid/uuid.dart';
-
 import '../../domain/entities/scan_result.dart';
 import '../../domain/repositories/i_scanner_repository.dart';
-import '../datasources/barcode_datasource.dart';
 import '../datasources/claude_ai_datasource.dart';
-import '../datasources/invima_datasource.dart';
 import '../datasources/ocr_datasource.dart';
 import '../models/scan_result_model.dart';
+import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
+import '../../../medicine_detail/data/models/medicine_model.dart';
+import '../../../medicine_detail/domain/entities/medicine.dart';
 
-// Implementa IScannerRepository coordinando todos los datasources.
-// Es el único lugar que sabe cómo obtener la información del medicamento.
 class ScannerRepositoryImpl implements IScannerRepository {
   const ScannerRepositoryImpl({
     required this.invima,
     required this.ocr,
     required this.claude,
   });
-
-  final InvimaDataSource  invima;
-  final OcrDataSource     ocr;
-  final ClaudeAiDataSource claude;
+  final InvimaApiDataSource invima;
+  final OcrDataSource       ocr;
+  final ClaudeAiDataSource  claude;
 
   @override
-  Future<ScanResult> procesarBarcode(String barcode) async {
-    // Busca el medicamento en INVIMA por su código de barras
-    final datos = await invima.buscarPorBarcode(barcode);
-
-    return ScanResultModel(
-      id:                const Uuid().v4(),
-      valorEscaneado:    barcode,
-      metodo:            MetodoEscaneo.barcode,
-      escaneadoEn:       DateTime.now(),
-      confianza:         datos != null ? 0.95 : 0.0,
-      nombreMedicamento: datos?['nombre'] as String?,
-      registroSanitario: datos?['registro'] as String?,
-      estado:            datos?['estado'] as String?,
-      error:             datos == null ? 'Medicamento no encontrado' : null,
+  Future<ScanResult> processBarcode(String barcode) async {
+    // El código de barras EAN no existe en la API del INVIMA.
+    // Se intenta buscar por nombre como mejor esfuerzo.
+    // El usuario podrá ver el resultado en la pantalla de detalle.
+    final medicine = await invima.findByName(barcode);
+    return _buildResult(
+      scannedValue: barcode,
+      method:       ScanMethod.barcode,
+      medicine:     medicine,
+      confidence:   medicine != null ? 0.70 : 0.0,
     );
   }
 
   @override
-  Future<ScanResult> procesarOcr(String texto) async {
-    // Intenta extraer el código INVIMA del texto reconocido
-    final codigoInvima = _extraerCodigoInvima(texto);
+  Future<ScanResult> processOcr(String text) async {
+    // Si el texto contiene un código INVIMA, busca por registro.
+    // Si no, busca por nombre (palabras del empaque).
+    final invimaCode = _extractInvimaCode(text);
+    MedicineModel? medicine;
 
-    Map<String, dynamic>? datos;
-
-    if (codigoInvima != null) {
-      // Si encontró un código INVIMA, busca por registro
-      datos = await invima.buscarPorRegistro(codigoInvima);
+    if (invimaCode != null) {
+      medicine = await invima.findByRegistry(invimaCode);
     } else {
-      // Si no, busca por el texto completo
-      final resultados = await invima.buscarPorTexto(texto);
-      datos = resultados.isNotEmpty ? resultados.first : null;
+      final results = await invima.search(text);
+      medicine = results.isNotEmpty ? results.first as MedicineModel? : null;
     }
 
-    return ScanResultModel(
-      id:                const Uuid().v4(),
-      valorEscaneado:    texto,
-      metodo:            MetodoEscaneo.ocr,
-      escaneadoEn:       DateTime.now(),
-      confianza:         datos != null ? 0.80 : 0.0,
-      nombreMedicamento: datos?['nombre'] as String?,
-      registroSanitario: datos?['registro'] as String?,
-      estado:            datos?['estado'] as String?,
-      error:             datos == null ? 'No se encontró información' : null,
+    return _buildResult(
+      scannedValue: text,
+      method:       ScanMethod.ocr,
+      medicine:     medicine,
+      confidence:   medicine != null ? 0.85 : 0.0,
     );
   }
 
   @override
-  Future<ScanResult> analizarImagen(String rutaImagen) async {
-    // Envía la imagen a Claude API para análisis visual
-    final analisis = await claude.analizarEmpaque(rutaImagen);
-
-    final esAutentico = analisis['esAudentico'] as bool? ?? false;
-    final confianza   = (analisis['confianza'] as num?)?.toDouble() ?? 0.0;
-    final observacion = analisis['observaciones'] as String? ?? '';
-
+  Future<ScanResult> analyzeImage(String imagePath) async {
+    final analysis    = await claude.analyzePackaging(imagePath);
+    final isAuthentic = analysis['isAuthentic'] as bool? ?? false;
+    final confidence  = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
+    final observation = analysis['observations'] as String? ?? '';
     return ScanResultModel(
-      id:             const Uuid().v4(),
-      valorEscaneado: rutaImagen,
-      metodo:         MetodoEscaneo.visual,
-      escaneadoEn:    DateTime.now(),
-      confianza:      confianza,
-      estado:         esAutentico ? 'vigente' : 'sospechoso',
-      error:          esAutentico ? null : observacion,
+      id:           const Uuid().v4(),
+      scannedValue: imagePath,
+      method:       ScanMethod.visual,
+      scannedAt:    DateTime.now(),
+      confidence:   confidence,
+      status:       isAuthentic ? 'vigente' : 'sospechoso',
+      error:        isAuthentic ? null : observation,
     );
   }
 
-  // Extrae un código INVIMA del texto OCR usando una expresión regular
-  String? _extraerCodigoInvima(String texto) {
-    final regex = RegExp(
-      r'INVIMA\s*\d{4}[A-Z]-?\d{6,7}',
-      caseSensitive: false,
+  // Construye el ScanResultModel a partir de un Medicine de la API
+  ScanResultModel _buildResult({
+    required String        scannedValue,
+    required ScanMethod    method,
+    required Medicine?     medicine,
+    required double        confidence,
+  }) {
+    return ScanResultModel(
+      id:             const Uuid().v4(),
+      scannedValue:   scannedValue,
+      method:         method,
+      scannedAt:      DateTime.now(),
+      confidence:     confidence,
+      medicineName:   medicine?.name,
+      sanitaryRecord: medicine?.sanitaryRecord,
+      status:         medicine?.condition.name,
+      error:          medicine == null ? 'No information found in INVIMA' : null,
     );
-    return regex.firstMatch(texto)?.group(0);
+  }
+
+  // Extrae un código INVIMA del texto OCR del empaque
+  String? _extractInvimaCode(String text) {
+    final regex = RegExp(r'INVIMA\s*\d{4}[A-Z]-?\d{6,7}', caseSensitive: false);
+    return regex.firstMatch(text)?.group(0);
   }
 }

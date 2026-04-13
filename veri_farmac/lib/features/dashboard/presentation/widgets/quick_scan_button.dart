@@ -1,14 +1,11 @@
-// Botón flotante para abrir el scanner directamente.
-// TODO: implementar con FloatingActionButton y animación Hero
-
+// Botón principal para abrir el scanner directamente desde el dashboard.
 import 'package:flutter/material.dart';
-
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 
-// Botón flotante grande para abrir el scanner directamente desde el dashboard.
 class QuickScanButton extends StatelessWidget {
-  const QuickScanButton({super.key, required this.alPresionar});
-  final VoidCallback alPresionar;
+  const QuickScanButton({super.key, required this.onPress});
+  final VoidCallback onPress;
 
   @override
   Widget build(BuildContext context) {
@@ -16,14 +13,11 @@ class QuickScanButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: ElevatedButton.icon(
-        onPressed: alPresionar,
+        onPressed: onPress,
         icon: const Icon(Icons.qr_code_scanner_rounded),
-        label: const Text(
-          'Escanear medicamento',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+        label: Text(
+          context.l10n.scanMedicine,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,

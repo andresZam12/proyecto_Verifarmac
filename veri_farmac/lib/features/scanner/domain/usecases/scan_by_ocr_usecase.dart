@@ -9,5 +9,5 @@ class ScanByOcrUseCase {
   const ScanByOcrUseCase(this._repo);
   final IScannerRepository _repo;
 
-  Future<ScanResult> call(String texto) => _repo.procesarOcr(texto);
+  Future<ScanResult> call(String text) => _repo.processOcr(text);
 }

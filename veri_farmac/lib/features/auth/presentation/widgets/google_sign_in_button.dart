@@ -1,18 +1,17 @@
-// Botón de "Continuar con Google".
+// Botón de "Continuar con Google" reutilizable.
+// Muestra un spinner cuando está cargando.
 
 import 'package:flutter/material.dart';
 
-// Botón de "Continuar con Google" reutilizable.
-// Muestra un spinner cuando está cargando.
 class GoogleSignInButton extends StatelessWidget {
   const GoogleSignInButton({
     super.key,
-    required this.alPresionar,
-    this.estaCargando = false,
+    required this.onPress,
+    this.isLoading = false,
   });
 
-  final VoidCallback alPresionar;
-  final bool estaCargando;
+  final VoidCallback onPress;
+  final bool         isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -20,30 +19,30 @@ class GoogleSignInButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: OutlinedButton(
-        onPressed: estaCargando ? null : alPresionar,
+        onPressed: isLoading ? null : onPress,
         style: OutlinedButton.styleFrom(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: estaCargando
+        child: isLoading
             ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Row(
+            : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo de Google con sus colores oficiales
-                  _GoogleLogo(),
-                  SizedBox(width: 12),
+                  const _GoogleLogo(),
+                  const SizedBox(width: 12),
                   Text(
-                    'Continuar con Google',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    'Continue with Google',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                        ),
                   ),
                 ],
               ),

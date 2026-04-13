@@ -7,16 +7,16 @@ import 'package:flutter/material.dart';
 class AppEmptyState extends StatelessWidget {
   const AppEmptyState({
     super.key,
-    required this.titulo,
-    this.descripcion,
-    this.accion,
+    required this.title,
+    this.description,
+    this.action,
   });
 
-  final String titulo;
-  final String? descripcion;
+  final String title;
+  final String? description;
 
-  // Widget opcional — puede ser un botón de acción
-  final Widget? accion;
+  // Optional widget — typically an action button
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -29,30 +29,30 @@ class AppEmptyState extends StatelessWidget {
             Icon(
               Icons.inbox_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
-              titulo,
+              title,
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            if (descripcion != null) ...[
+            if (description != null) ...[
               const SizedBox(height: 8),
               Text(
-                descripcion!,
+                description!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                     ),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (accion != null) ...[
+            if (action != null) ...[
               const SizedBox(height: 24),
-              accion!,
+              action!,
             ],
           ],
         ),
