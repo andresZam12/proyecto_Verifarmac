@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/scan_result.dart';
 import '../../domain/repositories/i_scanner_repository.dart';
 import '../datasources/claude_ai_datasource.dart';
 import '../datasources/ocr_datasource.dart';
+import '../datasources/open_food_facts_datasource.dart';
 import '../models/scan_result_model.dart';
 import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../../medicine_detail/data/models/medicine_model.dart';
@@ -13,30 +15,59 @@ class ScannerRepositoryImpl implements IScannerRepository {
     required this.invima,
     required this.ocr,
     required this.claude,
+    required this.openFoodFacts,
   });
-  final InvimaApiDataSource invima;
-  final OcrDataSource       ocr;
-  final ClaudeAiDataSource  claude;
+  final InvimaApiDataSource       invima;
+  final OcrDataSource             ocr;
+  final ClaudeAiDataSource        claude;
+  final OpenFoodFactsDatasource   openFoodFacts;
 
   @override
   Future<ScanResult> processBarcode(String barcode) async {
-    // EAN/UPC barcodes (all digits, 8-14 chars) are NOT in the INVIMA dataset.
-    // The INVIMA public API only has registry numbers (expediente), product names,
-    // active ingredients, etc. — no EAN field.
     if (_isEanBarcode(barcode)) {
+      // Paso 1: buscar el nombre del producto en Open Food Facts
+      final productName = await openFoodFacts.getProductName(barcode);
+
+      if (productName != null) {
+        // Paso 2: usar ese nombre para buscar en INVIMA
+        debugPrint('[Scanner] OFF encontró: $productName — buscando en INVIMA...');
+        final medicine = await invima.findByName(productName);
+        if (medicine != null) {
+          return _buildResult(
+            scannedValue: barcode,
+            method:       ScanMethod.barcode,
+            medicine:     medicine,
+            confidence:   0.75,
+          );
+        }
+        // OFF encontró nombre pero INVIMA no lo tiene
+        return ScanResultModel(
+          id:           const Uuid().v4(),
+          scannedValue: barcode,
+          method:       ScanMethod.barcode,
+          scannedAt:    DateTime.now(),
+          confidence:   0.0,
+          error:        'Producto identificado como "$productName" pero no se '
+                        'encontró en INVIMA.\n'
+                        'Usa el modo OCR y apunta al número de registro '
+                        '(ej. "INVIMA 2008M-XXXXXXX") del empaque.',
+        );
+      }
+
+      // Paso 3: EAN no está en Open Food Facts
       return ScanResultModel(
         id:           const Uuid().v4(),
         scannedValue: barcode,
         method:       ScanMethod.barcode,
         scannedAt:    DateTime.now(),
         confidence:   0.0,
-        error:        'Código de barras EAN no registrado en INVIMA.\n'
-                      'Usa el modo OCR y apunta al número de registro '
+        error:        'Código de barras no encontrado en ninguna base de datos.\n'
+                      'Cambia al modo OCR y apunta al número de registro '
                       '(ej. "INVIMA 2008M-XXXXXXX") impreso en el empaque.',
       );
     }
 
-    // Non-EAN barcode — could be a registry number printed as barcode.
+    // Barcode no-EAN — podría ser un código de registro impreso como barcode
     final medicine = await invima.findByRegistry(barcode);
     return _buildResult(
       scannedValue: barcode,

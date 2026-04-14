@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/claude_ai_datasource.dart';
 import '../../data/datasources/ocr_datasource.dart';
+import '../../data/datasources/open_food_facts_datasource.dart';
 import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../data/repositories/scanner_repository_impl.dart';
 import '../../domain/entities/scan_result.dart';
@@ -8,7 +9,7 @@ import '../../domain/usecases/analyze_image_usecase.dart';
 import '../../domain/usecases/scan_by_barcode_usecase.dart';
 import '../../domain/usecases/scan_by_ocr_usecase.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/app_strings.dart';
 
 enum ScannerStatus { idle, scanning, analyzing, success, error }
 
@@ -84,9 +85,10 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
 final _dioProvider        = Provider((ref) => DioClient().dio);
 final _repositoryProvider = Provider(
   (ref) => ScannerRepositoryImpl(
-    invima: InvimaApiDataSource(),
-    ocr:    OcrDataSource(),
-    claude: ClaudeAiDataSource(ref.read(_dioProvider)),
+    invima:         InvimaApiDataSource(),
+    ocr:            OcrDataSource(),
+    claude:         ClaudeAiDataSource(ref.read(_dioProvider)),
+    openFoodFacts:  OpenFoodFactsDatasource(),
   ),
 );
 
