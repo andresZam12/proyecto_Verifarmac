@@ -1,17 +1,20 @@
 // Marco visual sobre la cámara con área de escaneo resaltada.
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'scan_mode_toggle.dart';
 
 class ScannerOverlay extends StatelessWidget {
   const ScannerOverlay({
     super.key,
     this.message,
     this.highlight = false,
+    this.mode = ScanMode.barcode,
   });
 
-  final String? message;
-  // true cuando hay un código detectado — cambia el borde a verde
-  final bool    highlight;
+  final String?  message;
+  final bool     highlight;
+  // El modo determina el tamaño del área: OCR usa un rectángulo más grande
+  final ScanMode mode;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +22,7 @@ class ScannerOverlay extends StatelessWidget {
       children: [
         // Fondo oscuro con el recorte del área de escaneo
         CustomPaint(
-          painter: _OverlayPainter(highlight: highlight),
+          painter: _OverlayPainter(highlight: highlight, mode: mode),
           child: const SizedBox.expand(),
         ),
 
@@ -44,18 +47,23 @@ class ScannerOverlay extends StatelessWidget {
 }
 
 class _OverlayPainter extends CustomPainter {
-  const _OverlayPainter({this.highlight = false});
-  final bool highlight;
+  const _OverlayPainter({
+    this.highlight = false,
+    this.mode = ScanMode.barcode,
+  });
+  final bool     highlight;
+  final ScanMode mode;
 
   @override
   void paint(Canvas canvas, Size size) {
     final darkPaint = Paint()..color = Colors.black.withValues(alpha: 0.6);
 
-    final width    = size.width * 0.75;
-    final height   = width * 0.5;
-    final left     = (size.width  - width)  / 2;
-    final top      = (size.height - height) / 2;
-    final scanArea = Rect.fromLTWH(left, top, width, height);
+    // OCR necesita un área más grande para capturar texto del empaque
+    final areaWidth  = mode == ScanMode.ocr ? size.width * 0.92 : size.width * 0.75;
+    final areaHeight = mode == ScanMode.ocr ? areaWidth * 0.60  : areaWidth * 0.50;
+    final left       = (size.width  - areaWidth)  / 2;
+    final top        = (size.height - areaHeight) / 2;
+    final scanArea   = Rect.fromLTWH(left, top, areaWidth, areaHeight);
 
     // Fondo oscuro con recorte
     final path = Path()
@@ -77,5 +85,6 @@ class _OverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_OverlayPainter old) => old.highlight != highlight;
+  bool shouldRepaint(_OverlayPainter old) =>
+      old.highlight != highlight || old.mode != mode;
 }

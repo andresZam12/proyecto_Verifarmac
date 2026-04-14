@@ -20,15 +20,29 @@ class ScannerRepositoryImpl implements IScannerRepository {
 
   @override
   Future<ScanResult> processBarcode(String barcode) async {
-    // El código de barras EAN no existe en la API del INVIMA.
-    // Se intenta buscar por nombre como mejor esfuerzo.
-    // El usuario podrá ver el resultado en la pantalla de detalle.
-    final medicine = await invima.findByName(barcode);
+    // EAN/UPC barcodes (all digits, 8-14 chars) are NOT in the INVIMA dataset.
+    // The INVIMA public API only has registry numbers (expediente), product names,
+    // active ingredients, etc. — no EAN field.
+    if (_isEanBarcode(barcode)) {
+      return ScanResultModel(
+        id:           const Uuid().v4(),
+        scannedValue: barcode,
+        method:       ScanMethod.barcode,
+        scannedAt:    DateTime.now(),
+        confidence:   0.0,
+        error:        'Código de barras EAN no registrado en INVIMA.\n'
+                      'Usa el modo OCR y apunta al número de registro '
+                      '(ej. "INVIMA 2008M-XXXXXXX") impreso en el empaque.',
+      );
+    }
+
+    // Non-EAN barcode — could be a registry number printed as barcode.
+    final medicine = await invima.findByRegistry(barcode);
     return _buildResult(
       scannedValue: barcode,
       method:       ScanMethod.barcode,
       medicine:     medicine,
-      confidence:   medicine != null ? 0.70 : 0.0,
+      confidence:   medicine != null ? 0.80 : 0.0,
     );
   }
 
@@ -96,4 +110,8 @@ class ScannerRepositoryImpl implements IScannerRepository {
     final regex = RegExp(r'INVIMA\s*\d{4}[A-Z]-?\d{6,7}', caseSensitive: false);
     return regex.firstMatch(text)?.group(0);
   }
+
+  // EAN/UPC barcodes are purely numeric (8–14 digits)
+  bool _isEanBarcode(String value) =>
+      RegExp(r'^\d{8,14}$').hasMatch(value.trim());
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_loading.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
+import '../../data/datasources/ocr_datasource.dart';
 import '../providers/scanner_provider.dart';
 import '../widgets/scanner_overlay.dart';
 import '../widgets/scan_mode_toggle.dart';
@@ -21,16 +24,21 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
     facing: CameraFacing.back,
   );
 
-  ScanMode _mode          = ScanMode.barcode;
-  bool     _torchEnabled  = false;
-  bool     _processing    = false;
+  // OCR: ML Kit text recognizer + image picker
+  final _ocr        = OcrDataSource();
+  final _picker     = ImagePicker();
 
-  // Último valor detectado — solo se procesa cuando el usuario presiona el obturador
+  ScanMode _mode         = ScanMode.barcode;
+  bool     _torchEnabled = false;
+  bool     _processing   = false;
+
+  // Solo usado en modo barcode — valor del último código detectado
   String? _detectedValue;
 
   @override
   void dispose() {
     _controller.dispose();
+    _ocr.dispose();
     super.dispose();
   }
 
@@ -49,12 +57,20 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
         });
       }
       if (current.status == ScannerStatus.error) {
-        setState(() => _processing = false);
+        setState(() {
+          _processing    = false;
+          _detectedValue = null;
+        });
       }
     });
 
     final isAnalyzing = scannerState.status == ScannerStatus.analyzing;
-    final hasTarget   = _detectedValue != null && !_processing;
+
+    // En modo barcode: necesita código detectado para activar el obturador.
+    // En modo OCR: el obturador siempre está activo — captura imagen al pulsar.
+    final hasTarget = _mode == ScanMode.ocr
+        ? !_processing
+        : (_detectedValue != null && !_processing);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -82,10 +98,11 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
 
         // Marco de encuadre con mensaje de instrucción
         ScannerOverlay(
-          message: _mode == ScanMode.barcode
+          mode:      _mode,
+          message:   _mode == ScanMode.barcode
               ? l10n.aimAtBarcode
               : l10n.aimAtPackageText,
-          highlight: hasTarget, // marco verde cuando hay algo detectado
+          highlight: _mode == ScanMode.barcode && hasTarget,
         ),
 
         // Toggle de modo en la parte superior
@@ -97,17 +114,17 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
               onChange:    (mode) => setState(() {
                 _mode          = mode;
                 _detectedValue = null;
+                ref.read(scannerProvider.notifier).reset();
               }),
             ),
           ),
         ),
 
-        // Indicador de detección sobre el obturador
-        if (hasTarget)
+        // Indicador de detección (solo en modo barcode)
+        if (_mode == ScanMode.barcode && hasTarget)
           Positioned(
             bottom: 148,
-            left: 0,
-            right: 0,
+            left: 0, right: 0,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -118,11 +135,33 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.white, size: 16),
                   const SizedBox(width: 6),
-                  Text(
-                    _mode == ScanMode.barcode
-                        ? 'Código detectado — presiona para consultar'
-                        : 'Texto detectado — presiona para consultar',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  const Text(
+                    'Código detectado — presiona para consultar',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+
+        // Indicador de modo OCR
+        if (_mode == ScanMode.ocr && !_processing)
+          Positioned(
+            bottom: 148,
+            left: 0, right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Apunta al número INVIMA y presiona',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ]),
               ),
@@ -160,9 +199,10 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
           bottom: 40, left: 0, right: 0,
           child: Center(
             child: _ShutterButton(
-              onPress:  _onShutterPressed,
+              onPress:   _onShutterPressed,
               hasTarget: hasTarget,
               isLoading: isAnalyzing,
+              isOcr:     _mode == ScanMode.ocr,
             ),
           ),
         ),
@@ -170,27 +210,63 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
     );
   }
 
-  // Se llama continuamente por la cámara — solo guarda el valor, no procesa
+  // Barcode mode — solo guarda el valor detectado, no procesa
   void _onDetect(BarcodeCapture capture) {
-    if (_processing) return;
+    if (_processing || _mode != ScanMode.barcode) return;
     final value = capture.barcodes.firstOrNull?.rawValue;
     if (value != null && value != _detectedValue) {
       setState(() => _detectedValue = value);
     }
   }
 
-  // El usuario presiona el obturador — ahora sí se consulta la API
-  void _onShutterPressed() {
-    final value = _detectedValue;
-    if (value == null || _processing) return;
-
-    setState(() => _processing = true);
+  // Obturador presionado
+  Future<void> _onShutterPressed() async {
+    if (_processing) return;
 
     if (_mode == ScanMode.barcode) {
+      // Modo barcode: usa el valor ya detectado
+      final value = _detectedValue;
+      if (value == null) return;
+      setState(() => _processing = true);
       ref.read(scannerProvider.notifier).scanBarcode(value);
     } else {
-      ref.read(scannerProvider.notifier).scanOcr(value);
+      // Modo OCR: captura foto con la cámara nativa, luego extrae texto con ML Kit
+      setState(() => _processing = true);
+      try {
+        final photo = await _picker.pickImage(
+          source:       ImageSource.camera,
+          imageQuality: 90,
+          preferredCameraDevice: CameraDevice.rear,
+        );
+        if (photo == null) {
+          // Usuario canceló
+          setState(() => _processing = false);
+          return;
+        }
+        final text = await _ocr.extractText(photo.path);
+        debugPrint('[OCR] Texto extraído: $text');
+        if (text.trim().isEmpty) {
+          ref.read(scannerProvider.notifier).reset();
+          setState(() => _processing = false);
+          _showOcrEmptyError();
+          return;
+        }
+        ref.read(scannerProvider.notifier).scanOcr(text);
+      } catch (e) {
+        debugPrint('[OCR] Error capturando imagen: $e');
+        setState(() => _processing = false);
+      }
     }
+  }
+
+  void _showOcrEmptyError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se detectó texto. Asegúrate de que el empaque esté bien iluminado.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   void _toggleTorch() {
@@ -205,53 +281,57 @@ class _ShutterButton extends StatelessWidget {
     required this.onPress,
     required this.hasTarget,
     required this.isLoading,
+    required this.isOcr,
   });
 
   final VoidCallback onPress;
   final bool         hasTarget;
   final bool         isLoading;
+  final bool         isOcr;
 
   @override
   Widget build(BuildContext context) {
+    // Color del botón: gris=cargando, verde=barcode detectado, azul=OCR listo, blanco=esperando
+    final Color buttonColor;
+    if (isLoading) {
+      buttonColor = Colors.grey.withValues(alpha: 0.5);
+    } else if (isOcr) {
+      buttonColor = Colors.blue.withValues(alpha: 0.9);
+    } else if (hasTarget) {
+      buttonColor = Colors.green;
+    } else {
+      buttonColor = Colors.white.withValues(alpha: 0.85);
+    }
+
     return GestureDetector(
       onTap: isLoading ? null : onPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width:  80,
-        height: 80,
+        width: 80, height: 80,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isLoading
-              ? Colors.grey.withValues(alpha: 0.5)
-              : hasTarget
-                  ? Colors.green
-                  : Colors.white.withValues(alpha: 0.85),
-          border: Border.all(
-            color: Colors.white,
-            width: 4,
-          ),
+          color: buttonColor,
+          border: Border.all(color: Colors.white, width: 4),
           boxShadow: [
             BoxShadow(
-              color: (hasTarget ? Colors.green : Colors.white)
-                  .withValues(alpha: 0.3),
-              blurRadius: hasTarget ? 20 : 8,
-              spreadRadius: hasTarget ? 4 : 0,
+              color: buttonColor.withValues(alpha: 0.4),
+              blurRadius:  (hasTarget || isOcr) ? 20 : 8,
+              spreadRadius: (hasTarget || isOcr) ? 4  : 0,
             ),
           ],
         ),
         child: isLoading
             ? const Padding(
                 padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
               )
             : Icon(
-                hasTarget
-                    ? Icons.search_rounded
-                    : Icons.camera_alt_rounded,
-                color: hasTarget ? Colors.white : Colors.black,
+                isOcr
+                    ? Icons.document_scanner_rounded
+                    : hasTarget
+                        ? Icons.search_rounded
+                        : Icons.camera_alt_rounded,
+                color: (hasTarget || isOcr) ? Colors.white : Colors.black,
                 size: 32,
               ),
       ),

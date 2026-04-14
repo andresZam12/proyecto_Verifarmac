@@ -1,120 +1,174 @@
 // Datasource que consulta la API pública del INVIMA en datos.gov.co
 //
-// FUENTE OFICIAL:
-// El gobierno colombiano publica los registros sanitarios del INVIMA en:
-// https://www.datos.gov.co/Salud-y-Protecci-n-Social/INVIMA-Registros-Sanitarios-Vigentes-Medicamentos-/5h2e-6hhg
+// FUENTE OFICIAL (dataset actualizado):
+// https://www.datos.gov.co/d/i7cb-raxc
+// "CÓDIGO ÚNICO DE MEDICAMENTOS VIGENTES"
 //
-// API Socrata (SODA) — formato de consulta:
-// GET https://www.datos.gov.co/resource/5h2e-6hhg.json?$where=<SoQL>&$limit=5
-//
-// Para activar esta fuente en lugar del mock:
-// En medicine_provider.dart, reemplazar InvimaMockDataSource por InvimaApiDataSource
-// y cambiar los métodos (findByBarcode → findByName / findByRegistry).
+// Campos relevantes:
+//   registrosanitario → "INVIMA 2008M-0007952"
+//   producto          → nombre del medicamento
+//   principioactivo   → ingrediente activo
+//   titular           → empresa titular del registro
+//   nombrerol         → fabricante (cuando tiporol = FABRICANTE)
+//   estadoregistro    → "Vigente", "Vencido", "Suspendido", etc.
+//   formafarmaceutica → tableta, jarabe, etc.
+//   cantidad + unidadmedida → concentración
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/medicine_model.dart';
 
 class InvimaApiDataSource {
   InvimaApiDataSource() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'https://www.datos.gov.co/resource/',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 20),
       headers: {'Accept': 'application/json'},
     ));
   }
 
   late final Dio _dio;
 
-  // Dataset ID del INVIMA en datos.gov.co
-  // Fuente: "Registros Sanitarios Vigentes de Medicamentos"
-  static const _dataset = '5h2e-6hhg.json';
-  static const _limit   = 5;
+  // URL completa para evitar ambigüedad con baseUrl
+  static const _apiUrl = 'https://www.datos.gov.co/resource/i7cb-raxc.json';
+  static const _limit  = 5;
 
-  // Busca por nombre de producto (búsqueda aproximada, sin código de barras en el dataset)
-  Future<MedicineModel?> findByName(String name) async {
-    try {
-      final response = await _dio.get(_dataset, queryParameters: {
-        r'$where': "upper(nombre_producto) like upper('%${_escape(name)}%')",
-        r'$limit': '$_limit',
-      });
-      final list = response.data as List<dynamic>;
-      if (list.isEmpty) { return null; }
-      return _fromSocrata(list.first as Map<String, dynamic>);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // Busca por número de expediente o registro sanitario
+  // Busca por registro sanitario (ej: "2008M-0007952" o "INVIMA 2008M-0007952").
   Future<MedicineModel?> findByRegistry(String registry) async {
-    // Elimina el prefijo "INVIMA " si viene incluido
-    final clean = registry
-        .replaceAll(RegExp(r'^INVIMA\s*', caseSensitive: false), '');
-    try {
-      final response = await _dio.get(_dataset, queryParameters: {
-        r'$where': "expediente like '%${_escape(clean)}%'",
-        r'$limit': '$_limit',
-      });
-      final list = response.data as List<dynamic>;
-      if (list.isEmpty) { return null; }
-      return _fromSocrata(list.first as Map<String, dynamic>);
-    } catch (_) {
-      return null;
+    final clean       = registry.replaceAll(RegExp(r'^INVIMA\s*', caseSensitive: false), '').trim();
+    final withoutDash = clean.replaceAll('-', '');
+
+    // Intento 1: busca en el campo registrosanitario con guion
+    var result = await _queryWhere(
+      "upper(registrosanitario) like upper('%${_escape(clean)}%')",
+    );
+    if (result != null) return result;
+
+    // Intento 2: sin guion
+    if (withoutDash != clean) {
+      result = await _queryWhere(
+        "upper(registrosanitario) like upper('%${_escape(withoutDash)}%')",
+      );
+      if (result != null) return result;
     }
+
+    // Intento 3: full-text search como último recurso
+    return _queryFullText(clean);
   }
 
-  // Búsqueda múltiple por nombre para listar resultados
+  // Busca por nombre del producto.
+  Future<MedicineModel?> findByName(String name) async {
+    // Intento 1: full-text (busca en todos los campos)
+    final result = await _queryFullText(name);
+    if (result != null) return result;
+
+    // Intento 2: LIKE en campo producto
+    return _queryWhere(
+      "upper(producto) like upper('%${_escape(name)}%')",
+    );
+  }
+
+  // Búsqueda múltiple para historial/sugerencias.
   Future<List<MedicineModel>> search(String query) async {
     try {
-      final response = await _dio.get(_dataset, queryParameters: {
-        r'$where': "upper(nombre_producto) like upper('%${_escape(query)}%')",
+      final response = await _dio.get(_apiUrl, queryParameters: {
+        r'$q':     query,
         r'$limit': '$_limit',
       });
       final list = response.data as List<dynamic>;
-      return list
-          .map((item) => _fromSocrata(item as Map<String, dynamic>))
+      if (list.isNotEmpty) {
+        return list
+            .map((e) => _fromSocrata(e as Map<String, dynamic>))
+            .whereType<MedicineModel>()
+            .toList();
+      }
+
+      // Respaldo: LIKE en nombre
+      final response2 = await _dio.get(_apiUrl, queryParameters: {
+        r'$where': "upper(producto) like upper('%${_escape(query)}%')",
+        r'$limit': '$_limit',
+      });
+      final list2 = response2.data as List<dynamic>;
+      return list2
+          .map((e) => _fromSocrata(e as Map<String, dynamic>))
           .whereType<MedicineModel>()
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[INVIMA] search error: $e');
       return [];
     }
   }
 
-  // Mapea la respuesta de la API Socrata al modelo interno.
-  // Campos del dataset datos.gov.co:
-  //   expediente, nombre_producto, titular, laboratorio,
-  //   principio_activo, concentracion, forma_farmaceutica, estado
-  MedicineModel? _fromSocrata(Map<String, dynamic> json) {
+  // ── Helpers internos ─────────────────────────────────────────
+
+  Future<MedicineModel?> _queryWhere(String where) async {
     try {
-      final rawStatus = (json['estado'] as String? ?? '').toLowerCase();
-      return MedicineModel.fromJson({
-        'id':            json['expediente'] ?? '',
-        'nombre':        json['nombre_producto'] ?? 'Sin nombre',
-        'registro':      'INVIMA ${json['expediente'] ?? ''}',
-        'laboratorio':   json['laboratorio'] ?? 'Desconocido',
-        'titular':       json['titular'],
-        'ingrediente':   json['principio_activo'],
-        'concentracion': json['concentracion'],
-        'forma':         json['forma_farmaceutica'],
-        'estado':        _normalizeStatus(rawStatus),
+      debugPrint('[INVIMA] WHERE → $where');
+      final response = await _dio.get(_apiUrl, queryParameters: {
+        r'$where': where,
+        r'$limit': '1',
       });
-    } catch (_) {
+      final list = response.data as List<dynamic>;
+      debugPrint('[INVIMA] WHERE result: ${list.length} items');
+      if (list.isEmpty) return null;
+      return _fromSocrata(list.first as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('[INVIMA] WHERE error: $e');
       return null;
     }
   }
 
-  // Convierte el estado devuelto por la API a los valores internos del dominio
-  String _normalizeStatus(String raw) {
-    if (raw.contains('vigente'))   { return 'vigente'; }
-    if (raw.contains('venc'))      { return 'vencido'; }
-    if (raw.contains('invalid') || raw.contains('suspendido')) {
-      return 'invalido';
+  Future<MedicineModel?> _queryFullText(String query) async {
+    try {
+      debugPrint('[INVIMA] \$q → $query');
+      final response = await _dio.get(_apiUrl, queryParameters: {
+        r'$q':     query,
+        r'$limit': '1',
+      });
+      final list = response.data as List<dynamic>;
+      debugPrint('[INVIMA] \$q result: ${list.length} items');
+      if (list.isEmpty) return null;
+      return _fromSocrata(list.first as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('[INVIMA] \$q error: $e');
+      return null;
     }
-    if (raw.contains('sospech'))   { return 'sospechoso'; }
+  }
+
+  MedicineModel? _fromSocrata(Map<String, dynamic> json) {
+    try {
+      final rawStatus = (json['estadoregistro'] as String? ?? '').toLowerCase();
+      // Concentración: combina cantidad + unidadmedida si están disponibles
+      final cantidad  = json['cantidad']?.toString();
+      final unidad    = json['unidadmedida'] as String?;
+      final conc      = (cantidad != null && unidad != null)
+          ? '$cantidad $unidad'
+          : (json['concentracion'] as String?);
+
+      return MedicineModel.fromJson({
+        'id':            json['expediente'] ?? '',
+        'nombre':        json['producto'] ?? 'Sin nombre',
+        'registro':      json['registrosanitario'] ?? 'INVIMA ${json['expediente'] ?? ''}',
+        'laboratorio':   json['nombrerol'] ?? json['titular'] ?? 'Desconocido',
+        'titular':       json['titular'],
+        'ingrediente':   json['principioactivo'],
+        'concentracion': conc,
+        'forma':         json['formafarmaceutica'],
+        'estado':        _normalizeStatus(rawStatus),
+      });
+    } catch (e) {
+      debugPrint('[INVIMA] _fromSocrata error: $e');
+      return null;
+    }
+  }
+
+  String _normalizeStatus(String raw) {
+    if (raw.contains('vigente'))                               return 'vigente';
+    if (raw.contains('venc'))                                  return 'vencido';
+    if (raw.contains('invalid') || raw.contains('suspendido')) return 'invalido';
+    if (raw.contains('sospech'))                               return 'sospechoso';
     return 'desconocido';
   }
 
-  // Escapa comillas simples para consultas SoQL
   String _escape(String value) => value.replaceAll("'", "''");
 }

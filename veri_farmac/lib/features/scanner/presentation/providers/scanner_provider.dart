@@ -34,10 +34,12 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
   Future<void> scanBarcode(String barcode) async {
     state = const ScannerState(status: ScannerStatus.analyzing);
     try {
-      state = ScannerState(
-        status: ScannerStatus.success,
-        result: await _byBarcode(barcode),
-      );
+      final result = await _byBarcode(barcode);
+      // Si el resultado trae un error (ej: código EAN no indexado), mostrar en pantalla
+      // sin navegar a la pantalla de detalle.
+      state = result.error != null
+          ? ScannerState(status: ScannerStatus.error, error: result.error)
+          : ScannerState(status: ScannerStatus.success, result: result);
     } catch (_) {
       state = const ScannerState(
         status: ScannerStatus.error,
@@ -49,10 +51,10 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
   Future<void> scanOcr(String text) async {
     state = const ScannerState(status: ScannerStatus.analyzing);
     try {
-      state = ScannerState(
-        status: ScannerStatus.success,
-        result: await _byOcr(text),
-      );
+      final result = await _byOcr(text);
+      state = result.error != null
+          ? ScannerState(status: ScannerStatus.error, error: result.error)
+          : ScannerState(status: ScannerStatus.success, result: result);
     } catch (_) {
       state = const ScannerState(
         status: ScannerStatus.error,
