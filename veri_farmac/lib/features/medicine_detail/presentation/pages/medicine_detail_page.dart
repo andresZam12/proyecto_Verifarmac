@@ -5,30 +5,61 @@ import '../../../../shared/widgets/app_error_widget.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/confidence_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../history/data/datasources/history_local_datasource.dart';
+import '../../../history/data/models/history_entry_model.dart';
+import '../../../scanner/domain/entities/scan_result.dart';
 import '../../domain/entities/medicine.dart';
 import '../providers/medicine_provider.dart';
 import '../widgets/status_badge.dart';
 
 class MedicineDetailPage extends ConsumerStatefulWidget {
-  const MedicineDetailPage({super.key, required this.medicineId});
-  final String medicineId;
+  const MedicineDetailPage({super.key, required this.scanResult});
+  final ScanResult scanResult;
   @override
   ConsumerState<MedicineDetailPage> createState() => _MedicineDetailPageState();
 }
 
 class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
+  bool _historySaved = false;
+
+  String get _medicineId =>
+      widget.scanResult.sanitaryRecord ?? widget.scanResult.scannedValue;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref.read(medicineProvider.notifier).loadByBarcode(widget.medicineId),
+      () => ref.read(medicineProvider.notifier).loadByBarcode(_medicineId),
     );
+  }
+
+  Future<void> _saveToHistory(Medicine medicine) async {
+    if (_historySaved) return;
+    _historySaved = true;
+    final entry = HistoryEntryModel(
+      id:             widget.scanResult.id,
+      medicineName:   medicine.name,
+      sanitaryRecord: medicine.sanitaryRecord,
+      status:         medicine.condition.label.toLowerCase(),
+      method:         widget.scanResult.method.name,
+      createdAt:      widget.scanResult.scannedAt,
+      laboratory:     medicine.laboratory,
+      confidence:     widget.scanResult.confidence,
+    );
+    try {
+      await HistoryLocalDataSource().save(entry);
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(medicineProvider);
     final l10n  = context.l10n;
+
+    // Guardar en historial la primera vez que carga exitosamente
+    if (state.status == MedicineStatus.loaded && !_historySaved) {
+      _saveToHistory(state.medicine!);
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.result)),
@@ -38,7 +69,7 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
             message: state.error ?? 'Error',
             onRetry: () => ref
                 .read(medicineProvider.notifier)
-                .loadByBarcode(widget.medicineId),
+                .loadByBarcode(_medicineId),
           ),
         MedicineStatus.notFound   => AppEmptyState(
             title:       l10n.medicineNotFound,
