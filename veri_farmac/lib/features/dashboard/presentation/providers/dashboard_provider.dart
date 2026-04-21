@@ -17,10 +17,12 @@ class DashboardState {
 
   // Totales calculados a partir del mapa de stats
   int get total       => stats.values.fold(0, (a, b) => a + b);
-  int get valid       => stats['vigente']    ?? 0;
-  int get expired     => stats['vencido']    ?? 0;
-  int get invalid     => stats['invalido']   ?? 0;
-  int get suspicious  => stats['sospechoso'] ?? 0;
+  int get valid       => stats['vigente']       ?? 0;
+  int get expired     => stats['vencido']       ?? 0;
+  int get invalid     => stats['invalido']      ?? 0;
+  int get suspicious  => stats['sospechoso']    ?? 0;
+  int get notFound    => stats['no_encontrado'] ?? 0;
+  int get alerts      => invalid + suspicious;
 }
 
 class DashboardNotifier extends StateNotifier<DashboardState> {

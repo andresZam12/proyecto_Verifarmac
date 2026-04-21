@@ -38,8 +38,9 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
       final result = await _byBarcode(barcode);
       // Si el resultado trae un error (ej: código EAN no indexado), mostrar en pantalla
       // sin navegar a la pantalla de detalle.
+      // Mantiene el result en estado error para poder guardarlo en historial
       state = result.error != null
-          ? ScannerState(status: ScannerStatus.error, error: result.error)
+          ? ScannerState(status: ScannerStatus.error, error: result.error, result: result)
           : ScannerState(status: ScannerStatus.success, result: result);
     } catch (_) {
       state = const ScannerState(
@@ -54,7 +55,7 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
     try {
       final result = await _byOcr(text);
       state = result.error != null
-          ? ScannerState(status: ScannerStatus.error, error: result.error)
+          ? ScannerState(status: ScannerStatus.error, error: result.error, result: result)
           : ScannerState(status: ScannerStatus.success, result: result);
     } catch (_) {
       state = const ScannerState(

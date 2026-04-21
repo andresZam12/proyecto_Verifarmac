@@ -6,6 +6,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_loading.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../history/data/datasources/history_local_datasource.dart';
+import '../../../history/data/models/history_entry_model.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../providers/scanner_provider.dart';
 import '../widgets/scanner_overlay.dart';
@@ -126,6 +129,11 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       }
       if (current.status == ScannerStatus.error) {
         setState(() { _processing = false; _detectedValue = null; });
+        // Si hay un resultado (no excepción de red), guardar como "no encontrado"
+        final r = current.result;
+        if (r != null) {
+          _saveNotFound(r.scannedValue);
+        }
       }
     });
 
@@ -229,22 +237,11 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
             child: AppLoading(message: l10n.analyzing),
           ),
 
-        // ── Error ───────────────────────────────────────────
+        // ── Error overlay ────────────────────────────────────
         if (scannerState.status == ScannerStatus.error)
-          Positioned(
-            bottom: 148, left: 24, right: 24,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade800,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                scannerState.error ?? 'Error',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
+          _ScanAlertOverlay(
+            error: scannerState.error ?? '',
+            onDismiss: () => ref.read(scannerProvider.notifier).reset(),
           ),
 
         // ── Obturador ───────────────────────────────────────
@@ -315,6 +312,22 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
     }
   }
 
+  Future<void> _saveNotFound(String scannedValue) async {
+    try {
+      final entry = HistoryEntryModel(
+        id:             DateTime.now().millisecondsSinceEpoch.toString(),
+        medicineName:   scannedValue,
+        sanitaryRecord: '—',
+        status:         'no_encontrado',
+        method:         _mode.name,
+        createdAt:      DateTime.now(),
+        confidence:     0.0,
+      );
+      await HistoryLocalDataSource().save(entry);
+      ref.read(dashboardProvider.notifier).load();
+    } catch (_) {}
+  }
+
   void _toggleTorch() {
     if (_mode == ScanMode.barcode) {
       _barcodeController.toggleTorch();
@@ -328,6 +341,97 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
 }
 
 // ── Widgets auxiliares ─────────────────────────────────────────────────────
+
+class _ScanAlertOverlay extends StatelessWidget {
+  const _ScanAlertOverlay({required this.error, required this.onDismiss});
+  final String       error;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    // Determina si el error es "no encontrado" o un fallo técnico
+    final isNotFound = !error.contains('Error') && !error.contains('error');
+
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.82),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isNotFound
+                      ? Icons.search_off_rounded
+                      : Icons.warning_amber_rounded,
+                  color: isNotFound ? Colors.amber : Colors.orange,
+                  size: 72,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  isNotFound
+                      ? 'No encontrado en INVIMA'
+                      : 'No se pudo procesar',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isNotFound
+                      ? 'Verifica el origen del medicamento\ny mantente alerta.'
+                      : 'Intenta de nuevo con mejor iluminación\no enfoque.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (error.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      error,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: onDismiss,
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text('Escanear otro'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _Pill extends StatelessWidget {
   const _Pill({required this.color, required this.icon, required this.text});

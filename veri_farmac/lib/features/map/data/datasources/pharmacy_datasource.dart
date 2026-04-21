@@ -43,14 +43,10 @@ out center;
     for (final url in _servers) {
       try {
         debugPrint('[Pharmacy] Consultando $url');
-        final response = await _dio.post(
+        final response = await _dio.get(
           url,
-          // Form-encoded: Overpass espera el parámetro "data"
-          data: {'data': query},
-          options: Options(
-            contentType: Headers.formUrlEncodedContentType,
-            responseType: ResponseType.json,
-          ),
+          queryParameters: {'data': query},
+          options: Options(responseType: ResponseType.json),
         );
 
         final elements = response.data['elements'] as List<dynamic>? ?? [];
