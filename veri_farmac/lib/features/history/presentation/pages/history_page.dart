@@ -28,6 +28,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.history),
+        actions: [
+          if (state.entries.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_rounded),
+              tooltip: 'Eliminar todo',
+              onPressed: () => _confirmDeleteAll(context),
+            ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: _StatusFilter(
@@ -62,6 +70,31 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           },
         );
       }),
+    );
+  }
+
+  void _confirmDeleteAll(BuildContext context) {
+    final l10n = context.l10n;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar todo el historial'),
+        content: const Text('¿Eliminar todos los registros? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(historyProvider.notifier).deleteAll();
+            },
+            child: const Text('Eliminar todo',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 

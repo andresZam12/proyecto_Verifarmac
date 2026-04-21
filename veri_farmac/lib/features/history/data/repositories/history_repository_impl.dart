@@ -55,6 +55,12 @@ class HistoryRepositoryImpl implements IHistoryRepository {
   }
 
   @override
+  Future<void> deleteAll() async {
+    await _local.deleteAll();
+    try { await _remote.deleteAll(); } catch (_) {}
+  }
+
+  @override
   Future<void> sync(String userId) async {
     try {
       final unsynced = await _local.fetchUnsynced();

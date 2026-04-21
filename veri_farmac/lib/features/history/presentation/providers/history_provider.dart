@@ -23,11 +23,12 @@ class HistoryState {
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier(this._fetch, this._delete, this._sync)
+  HistoryNotifier(this._fetch, this._delete, this._deleteAll, this._sync)
       : super(const HistoryState());
 
   final FetchHistoryUseCase       _fetch;
   final DeleteHistoryEntryUseCase _delete;
+  final DeleteAllHistoryUseCase   _deleteAll;
   final SyncHistoryUseCase        _sync;
 
   Future<void> load() async {
@@ -54,6 +55,15 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   void filterBy(String? status) =>
       state = HistoryState(entries: state.entries, filter: status);
 
+  Future<void> deleteAll() async {
+    try {
+      await _deleteAll();
+      state = const HistoryState();
+    } catch (_) {
+      state = HistoryState(entries: state.entries, error: AppStrings.errorDeleting);
+    }
+  }
+
   Future<void> sync(String userId) async {
     try {
       await _sync(userId);
@@ -76,6 +86,7 @@ final historyProvider =
   return HistoryNotifier(
     FetchHistoryUseCase(repo),
     DeleteHistoryEntryUseCase(repo),
+    DeleteAllHistoryUseCase(repo),
     SyncHistoryUseCase(repo),
   );
 });

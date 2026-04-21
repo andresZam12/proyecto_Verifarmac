@@ -50,16 +50,17 @@ class _MapPageState extends ConsumerState<MapPage> {
       appBar: AppBar(
         title: Text(l10n.nearbyPharmacies),
         actions: [
-          if (state.pharmacies.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Text(
-                  '${state.pharmacies.length} encontradas',
-                  style: const TextStyle(fontSize: 13),
-                ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Text(
+                state.pharmacies.isEmpty
+                    ? 'Sin resultados OSM'
+                    : '${state.pharmacies.length} encontradas',
+                style: const TextStyle(fontSize: 13),
               ),
             ),
+          ),
         ],
       ),
       body: Builder(builder: (context) {

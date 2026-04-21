@@ -18,7 +18,7 @@ class PharmacyDataSource {
     'https://overpass.kumi.systems/api/interpreter',
   ];
 
-  static const _radiusMeters = 3000;
+  static const _radiusMeters = 8000;
   static const _pastoLat = 1.2136;
   static const _pastoLng = -77.2811;
 
@@ -29,14 +29,17 @@ class PharmacyDataSource {
     final lat = latitude  ?? _pastoLat;
     final lng = longitude ?? _pastoLng;
 
-    final query = '''
-[out:json][timeout:25];
-(
-  node["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);
-  way["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);
-);
-out center;
-''';
+    // Incluye todas las variantes de etiqueta que usan farmacias en Colombia
+    final query = '[out:json][timeout:30];'
+        '('
+        'node["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);'
+        'node["amenity"="drugstore"](around:$_radiusMeters,$lat,$lng);'
+        'node["healthcare"="pharmacy"](around:$_radiusMeters,$lat,$lng);'
+        'node["shop"="chemist"](around:$_radiusMeters,$lat,$lng);'
+        'way["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);'
+        'way["amenity"="drugstore"](around:$_radiusMeters,$lat,$lng);'
+        ');'
+        'out center;';
 
     // Intenta cada servidor hasta que uno responda
     Object? lastError;

@@ -27,6 +27,14 @@ class DeleteHistoryEntryUseCase {
   Future<void> call(String id) => _repo.delete(id);
 }
 
+// Elimina todo el historial.
+class DeleteAllHistoryUseCase {
+  const DeleteAllHistoryUseCase(this._repo);
+  final IHistoryRepository _repo;
+
+  Future<void> call() => _repo.deleteAll();
+}
+
 // Sincroniza el historial local con Supabase.
 class SyncHistoryUseCase {
   const SyncHistoryUseCase(this._repo);
