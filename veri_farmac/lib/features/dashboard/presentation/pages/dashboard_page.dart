@@ -89,6 +89,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           color: const Color(0xFFC62828),
                         ),
                       ]),
+                      const SizedBox(height: 12),
+                      Row(children: [
+                        _StatusCard(
+                          label: 'No encontrado',
+                          count: state.notFound,
+                          color: const Color(0xFFF57C00),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatusCard(
+                          label: 'Alertas',
+                          count: state.alerts,
+                          color: const Color(0xFF6A1B9A),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatusCard(
+                          label: 'Inválidos',
+                          count: state.invalid,
+                          color: const Color(0xFF37474F),
+                        ),
+                      ]),
                       const SizedBox(height: 24),
 
                       // Acceso al historial
