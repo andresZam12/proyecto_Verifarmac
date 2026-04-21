@@ -10,7 +10,6 @@ import 'features/auth/domain/repositories/i_auth_repository.dart';
 import 'features/auth/domain/usecases/sign_in_with_google_usecase.dart';
 import 'features/auth/domain/usecases/sign_out_usecase.dart';
 
-import 'features/scanner/data/datasources/barcode_datasource.dart';
 import 'features/scanner/data/datasources/claude_ai_datasource.dart';
 import 'features/scanner/data/datasources/ocr_datasource.dart';
 import 'features/scanner/data/datasources/open_food_facts_datasource.dart';
@@ -52,7 +51,6 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton(() => SignOutUseCase(sl<IAuthRepository>()));
 
   // ── Scanner ─────────────────────────────────────────────────
-  sl.registerLazySingleton(() => BarcodeDataSource());
   sl.registerLazySingleton(() => OcrDataSource());
   sl.registerLazySingleton(() => ClaudeAiDataSource(sl<DioClient>().dio));
   sl.registerLazySingleton(() => OpenFoodFactsDatasource());
