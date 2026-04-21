@@ -28,6 +28,11 @@ class HistoryLocalDataSource {
     await prefs.setString(_storageKey, jsonEncode(list));
   }
 
+  Future<void> deleteAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+  }
+
   Future<List<HistoryEntryModel>> fetchUnsynced() async {
     final list = await _fetchAll();
     return list

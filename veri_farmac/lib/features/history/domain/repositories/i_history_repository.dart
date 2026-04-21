@@ -12,6 +12,9 @@ abstract class IHistoryRepository {
   // Elimina una entrada del historial
   Future<void> delete(String id);
 
+  // Elimina todo el historial
+  Future<void> deleteAll();
+
   // Sincroniza el historial local con Supabase
   Future<void> sync(String userId);
 

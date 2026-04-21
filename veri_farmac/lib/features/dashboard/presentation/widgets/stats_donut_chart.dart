@@ -34,6 +34,7 @@ class StatsDonutChart extends StatelessWidget {
             _LegendItem(color: const Color(0xFFC62828), label: l10n.filterExpired,    count: state.expired),
             _LegendItem(color: const Color(0xFFE65100), label: l10n.filterInvalid,    count: state.invalid),
             _LegendItem(color: const Color(0xFF6A1B9A), label: l10n.filterSuspicious, count: state.suspicious),
+            _LegendItem(color: const Color(0xFFF57C00), label: 'No encontrado',       count: state.notFound),
           ],
         ),
       ]),
@@ -45,6 +46,7 @@ class StatsDonutChart extends StatelessWidget {
     if (state.expired    > 0) PieChartSectionData(value: state.expired.toDouble(),    color: const Color(0xFFC62828), title: '', radius: 30),
     if (state.invalid    > 0) PieChartSectionData(value: state.invalid.toDouble(),    color: const Color(0xFFE65100), title: '', radius: 30),
     if (state.suspicious > 0) PieChartSectionData(value: state.suspicious.toDouble(), color: const Color(0xFF6A1B9A), title: '', radius: 30),
+    if (state.notFound   > 0) PieChartSectionData(value: state.notFound.toDouble(),   color: const Color(0xFFF57C00), title: '', radius: 30),
   ];
 }
 
