@@ -5,6 +5,7 @@ import '../../../../shared/widgets/app_error_widget.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/confidence_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../history/data/datasources/history_local_datasource.dart';
 import '../../../history/data/models/history_entry_model.dart';
 import '../../../scanner/domain/entities/scan_result.dart';
@@ -48,6 +49,7 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
     );
     try {
       await HistoryLocalDataSource().save(entry);
+      ref.read(dashboardProvider.notifier).load();
     } catch (_) {}
   }
 
