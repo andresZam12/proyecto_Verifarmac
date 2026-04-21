@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../shared/widgets/app_loading.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/map_provider.dart';
 import '../widgets/pharmacy_marker.dart';
 
-// Coordenadas del centro de Pasto como vista inicial mientras carga el GPS
 const _pastoCenterLat = 1.2136;
 const _pastoCenterLng = -77.2811;
 
@@ -17,7 +17,7 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  GoogleMapController? _mapController;
+  final _mapController = MapController();
 
   @override
   void initState() {
@@ -27,7 +27,7 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -36,11 +36,20 @@ class _MapPageState extends ConsumerState<MapPage> {
     final state = ref.watch(mapProvider);
     final l10n  = context.l10n;
 
+    // Cuando llega la posición real, centrar el mapa
+    ref.listen(mapProvider, (prev, next) {
+      if (next.position != null && prev?.position == null) {
+        _mapController.move(
+          LatLng(next.position!.latitude, next.position!.longitude),
+          14,
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.nearbyPharmacies),
         actions: [
-          // Contador de farmacias encontradas
           if (state.pharmacies.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -58,71 +67,53 @@ class _MapPageState extends ConsumerState<MapPage> {
           return AppLoading(message: l10n.gettingLocation);
         }
 
-        if (state.permissionDenied) {
-          return Column(children: [
-            // Aun sin permiso mostramos las farmacias en Pasto
-            Expanded(child: _buildMap(state, centerOnPasto: true)),
+        if (state.error != null) {
+          return Center(child: Text(state.error!));
+        }
+
+        return Column(children: [
+          Expanded(child: _buildMap(state)),
+          if (state.permissionDenied)
             _PermissionBanner(
               message: l10n.locationPermissionNeeded,
               onRetry: () => ref.read(mapProvider.notifier).fetchLocation(),
               label: l10n.allowLocation,
             ),
-          ]);
-        }
-
-        if (state.error != null) {
-          return Center(child: Text(state.error!));
-        }
-
-        return _buildMap(state, centerOnPasto: false);
+        ]);
       }),
     );
   }
 
-  Widget _buildMap(MapState state, {required bool centerOnPasto}) {
-    final lat = centerOnPasto
-        ? _pastoCenterLat
-        : state.position!.latitude;
-    final lng = centerOnPasto
-        ? _pastoCenterLng
-        : state.position!.longitude;
+  Widget _buildMap(MapState state) {
+    final lat = state.position?.latitude  ?? _pastoCenterLat;
+    final lng = state.position?.longitude ?? _pastoCenterLng;
 
-    return Stack(children: [
-      GoogleMap(
-        onMapCreated:            (c) => _mapController = c,
-        initialCameraPosition:   CameraPosition(
-          target: LatLng(lat, lng),
-          zoom: 14,
-        ),
-        myLocationEnabled:       !centerOnPasto,
-        myLocationButtonEnabled: !centerOnPasto,
-        markers: PharmacyMarker.create(
-          pharmacies: state.pharmacies,
-          onPress: (name) => ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(name))),
-        ),
+    final pharmacyMarkers = PharmacyMarker.create(
+      pharmacies: state.pharmacies,
+      onPress: (name) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(name))),
+    );
+
+    if (state.position != null) {
+      pharmacyMarkers.add(
+        PharmacyMarker.userLocation(lat, lng),
+      );
+    }
+
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: LatLng(lat, lng),
+        initialZoom: 14,
       ),
-      // Banner de carga de farmacias mientras el mapa ya se ve
-      if (state.isLoading)
-        const Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(children: [
-                SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Buscando farmacias...'),
-              ]),
-            ),
-          ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.verifarmac.app',
         ),
-    ]);
+        MarkerLayer(markers: pharmacyMarkers),
+      ],
+    );
   }
 }
 
@@ -132,9 +123,9 @@ class _PermissionBanner extends StatelessWidget {
     required this.onRetry,
     required this.label,
   });
-  final String   message;
+  final String       message;
   final VoidCallback onRetry;
-  final String   label;
+  final String       label;
 
   @override
   Widget build(BuildContext context) {

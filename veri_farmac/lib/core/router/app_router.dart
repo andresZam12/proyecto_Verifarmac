@@ -84,13 +84,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.map,
         builder: (context, state) => const MapPage(),
       ),
-      // BUG FIX: el extra es un ScanResult, no un String
       GoRoute(
         path: AppRoutes.medicine,
         builder: (context, state) {
           final result = state.extra as ScanResult;
-          final id     = result.sanitaryRecord ?? result.scannedValue;
-          return MedicineDetailPage(medicineId: id);
+          return MedicineDetailPage(scanResult: result);
         },
       ),
       GoRoute(
