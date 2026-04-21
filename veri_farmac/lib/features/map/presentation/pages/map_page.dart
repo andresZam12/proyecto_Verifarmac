@@ -73,6 +73,13 @@ class _MapPageState extends ConsumerState<MapPage> {
 
         return Column(children: [
           Expanded(child: _buildMap(state)),
+          if (state.pharmacyError != null)
+            _InfoBanner(
+              message: state.pharmacyError!,
+              icon: Icons.warning_amber_rounded,
+              onRetry: () => ref.read(mapProvider.notifier).fetchLocation(),
+              label: 'Reintentar',
+            ),
           if (state.permissionDenied)
             _PermissionBanner(
               message: l10n.locationPermissionNeeded,
@@ -113,6 +120,34 @@ class _MapPageState extends ConsumerState<MapPage> {
         ),
         MarkerLayer(markers: pharmacyMarkers),
       ],
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({
+    required this.message,
+    required this.icon,
+    required this.onRetry,
+    required this.label,
+  });
+  final String     message;
+  final IconData   icon;
+  final VoidCallback onRetry;
+  final String     label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Row(children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+        TextButton(onPressed: onRetry, child: Text(label)),
+      ]),
     );
   }
 }

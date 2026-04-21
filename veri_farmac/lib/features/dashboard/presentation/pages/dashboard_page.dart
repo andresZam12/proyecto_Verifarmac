@@ -91,6 +91,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       ]),
                       const SizedBox(height: 24),
 
+                      // Acceso al historial
+                      _HistoryCard(
+                        onPress: () => context.push(AppRoutes.history),
+                      ),
+                      const SizedBox(height: 24),
+
                       // Gráfica de distribución
                       Text(
                         l10n.distribution,
@@ -111,6 +117,40 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
         ),
       ]),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.onPress});
+  final VoidCallback onPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return InkWell(
+      onTap: onPress,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Icon(Icons.history_rounded, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.history,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: color),
+        ]),
+      ),
     );
   }
 }
