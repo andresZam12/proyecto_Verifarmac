@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/location_datasource.dart';
@@ -67,7 +66,7 @@ final _locationDatasourceProvider = Provider((_) => LocationDataSource());
 final _locationRepositoryProvider = Provider(
   (ref) => LocationRepositoryImpl(ref.read(_locationDatasourceProvider)),
 );
-final _pharmacyDatasourceProvider = Provider((_) => PharmacyDataSource(Dio()));
+final _pharmacyDatasourceProvider = Provider((_) => PharmacyDataSource(null));
 
 final mapProvider = StateNotifierProvider<MapNotifier, MapState>(
   (ref) => MapNotifier(
