@@ -53,6 +53,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       QuickScanButton(
                         onPress: () => context.push(AppRoutes.scanner),
                       ),
+                      const SizedBox(height: 12),
+
+                      // Acceso al mapa de farmacias
+                      _PharmacyCard(
+                        onPress: () => context.push(AppRoutes.map),
+                      ),
                       const SizedBox(height: 28),
 
                       // Tarjetas de resumen
@@ -105,6 +111,40 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
         ),
       ]),
+    );
+  }
+}
+
+class _PharmacyCard extends StatelessWidget {
+  const _PharmacyCard({required this.onPress});
+  final VoidCallback onPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return InkWell(
+      onTap: onPress,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Icon(Icons.local_pharmacy_rounded, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.nearbyPharmacies,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: color),
+        ]),
+      ),
     );
   }
 }
