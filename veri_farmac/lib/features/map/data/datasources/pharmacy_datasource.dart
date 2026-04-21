@@ -1,18 +1,24 @@
-// Consulta farmacias reales usando la API de OpenStreetMap (Overpass).
-// Gratuita, sin API key. Datos reales actualizados por la comunidad OSM.
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class PharmacyDataSource {
-  PharmacyDataSource(this._dio);
-  final Dio _dio;
+  PharmacyDataSource(Dio? dio) {
+    _dio = dio ??
+        Dio(BaseOptions(
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 30),
+        ));
+  }
 
-  static const _overpassUrl = 'https://overpass-api.de/api/interpreter';
+  late final Dio _dio;
 
-  // Radio de búsqueda en metros alrededor de la ubicación
+  // Servidores públicos de Overpass en orden de prioridad
+  static const _servers = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
+
   static const _radiusMeters = 3000;
-
-  // Coordenadas del centro de Pasto como respaldo si no hay GPS
   static const _pastoLat = 1.2136;
   static const _pastoLng = -77.2811;
 
@@ -23,7 +29,6 @@ class PharmacyDataSource {
     final lat = latitude  ?? _pastoLat;
     final lng = longitude ?? _pastoLng;
 
-    // Query Overpass QL: busca nodos y áreas con amenity=pharmacy en el radio
     final query = '''
 [out:json][timeout:25];
 (
@@ -33,26 +38,39 @@ class PharmacyDataSource {
 out center;
 ''';
 
-    final response = await _dio.post(
-      _overpassUrl,
-      data: query,
-      options: Options(
-        contentType: 'text/plain',
-        responseType: ResponseType.json,
-      ),
-    );
+    // Intenta cada servidor hasta que uno responda
+    Object? lastError;
+    for (final url in _servers) {
+      try {
+        debugPrint('[Pharmacy] Consultando $url');
+        final response = await _dio.post(
+          url,
+          // Form-encoded: Overpass espera el parámetro "data"
+          data: {'data': query},
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+            responseType: ResponseType.json,
+          ),
+        );
 
-    final elements = response.data['elements'] as List<dynamic>? ?? [];
+        final elements = response.data['elements'] as List<dynamic>? ?? [];
+        final result = elements
+            .map((e) => _parseElement(e as Map<String, dynamic>))
+            .whereType<Map<String, dynamic>>()
+            .toList();
 
-    return elements
-        .map((e) => _parseElement(e as Map<String, dynamic>))
-        .where((p) => p != null)
-        .cast<Map<String, dynamic>>()
-        .toList();
+        debugPrint('[Pharmacy] ${result.length} farmacias encontradas');
+        return result;
+      } catch (e) {
+        debugPrint('[Pharmacy] Error en $url: $e');
+        lastError = e;
+      }
+    }
+
+    throw lastError ?? Exception('No se pudo contactar ningún servidor de farmacias');
   }
 
   Map<String, dynamic>? _parseElement(Map<String, dynamic> element) {
-    // Los nodos tienen lat/lon directos; las vías tienen un centro calculado
     final lat = (element['lat'] as num?)?.toDouble()
         ?? (element['center']?['lat'] as num?)?.toDouble();
     final lng = (element['lon'] as num?)?.toDouble()
@@ -60,16 +78,14 @@ out center;
 
     if (lat == null || lng == null) return null;
 
-    final tags = element['tags'] as Map<String, dynamic>? ?? {};
-
+    final tags    = element['tags'] as Map<String, dynamic>? ?? {};
     final name    = tags['name'] as String?
         ?? tags['brand'] as String?
         ?? 'Farmacia';
-    final address = _buildAddress(tags);
 
     return {
       'name':      name,
-      'address':   address,
+      'address':   _buildAddress(tags),
       'latitude':  lat,
       'longitude': lng,
       'phone':     tags['phone'] as String?,
@@ -79,7 +95,7 @@ out center;
 
   String _buildAddress(Map<String, dynamic> tags) {
     final parts = <String>[
-      if (tags['addr:street'] != null) tags['addr:street'] as String,
+      if (tags['addr:street']      != null) tags['addr:street']      as String,
       if (tags['addr:housenumber'] != null) tags['addr:housenumber'] as String,
     ];
     return parts.isNotEmpty ? parts.join(' # ') : 'Pasto, Nariño';
