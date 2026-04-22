@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../../shared/widgets/app_loading.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/map_provider.dart';
 import '../widgets/pharmacy_marker.dart';
@@ -22,7 +21,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(mapProvider.notifier).fetchLocation());
+    Future.microtask(() => ref.read(mapProvider.notifier).load());
   }
 
   @override
@@ -36,7 +35,6 @@ class _MapPageState extends ConsumerState<MapPage> {
     final state = ref.watch(mapProvider);
     final l10n  = context.l10n;
 
-    // Cuando llega la posición real, centrar el mapa
     ref.listen(mapProvider, (prev, next) {
       if (next.position != null && prev?.position == null) {
         _mapController.move(
@@ -46,136 +44,119 @@ class _MapPageState extends ConsumerState<MapPage> {
       }
     });
 
+    final lat = state.position?.latitude  ?? _pastoCenterLat;
+    final lng = state.position?.longitude ?? _pastoCenterLng;
+
+    final markers = [
+      ...PharmacyMarker.create(
+        pharmacies: state.pharmacies,
+        onPress: (name) => ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(name))),
+      ),
+      if (state.position != null)
+        PharmacyMarker.userLocation(lat, lng),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.nearbyPharmacies),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
+          if (!state.isLoading)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text(
+                  state.pharmacies.isEmpty
+                      ? 'Sin resultados'
+                      : '${state.pharmacies.length} encontradas',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: Stack(children: [
+        // ── Mapa siempre visible ───────────────────────────────
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: LatLng(lat, lng),
+            initialZoom: 14,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.verifarmac.app',
+            ),
+            MarkerLayer(markers: markers),
+          ],
+        ),
+
+        // ── Indicador de carga sobre el mapa ──────────────────
+        if (state.isLoading)
+          Container(
+            color: Colors.black26,
             child: Center(
-              child: Text(
-                state.pharmacies.isEmpty
-                    ? 'Sin resultados OSM'
-                    : '${state.pharmacies.length} encontradas',
-                style: const TextStyle(fontSize: 13),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 16),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(l10n.gettingLocation),
+                  ]),
+                ),
               ),
             ),
           ),
-        ],
-      ),
-      body: Builder(builder: (context) {
-        if (state.isLoading) {
-          return AppLoading(message: l10n.gettingLocation);
-        }
 
-        if (state.error != null) {
-          return Center(child: Text(state.error!));
-        }
-
-        return Column(children: [
-          Expanded(child: _buildMap(state)),
-          if (state.pharmacyError != null)
-            _InfoBanner(
-              message: state.pharmacyError!,
-              icon: Icons.warning_amber_rounded,
-              onRetry: () => ref.read(mapProvider.notifier).fetchLocation(),
-              label: 'Reintentar',
+        // ── Sin resultados ────────────────────────────────────
+        if (!state.isLoading && state.pharmacies.isEmpty)
+          Positioned(
+            top: 12, left: 0, right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'No se encontraron farmacias en esta zona',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
             ),
-          if (state.permissionDenied)
-            _PermissionBanner(
-              message: l10n.locationPermissionNeeded,
-              onRetry: () => ref.read(mapProvider.notifier).fetchLocation(),
-              label: l10n.allowLocation,
+          ),
+
+        // ── Permiso de ubicación denegado ─────────────────────
+        if (state.permissionDenied)
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Row(children: [
+                const Icon(Icons.location_off_rounded, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.locationPermissionNeeded,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ref.read(mapProvider.notifier).load(),
+                  child: Text(l10n.allowLocation),
+                ),
+              ]),
             ),
-        ]);
-      }),
-    );
-  }
-
-  Widget _buildMap(MapState state) {
-    final lat = state.position?.latitude  ?? _pastoCenterLat;
-    final lng = state.position?.longitude ?? _pastoCenterLng;
-
-    final pharmacyMarkers = PharmacyMarker.create(
-      pharmacies: state.pharmacies,
-      onPress: (name) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(name))),
-    );
-
-    if (state.position != null) {
-      pharmacyMarkers.add(
-        PharmacyMarker.userLocation(lat, lng),
-      );
-    }
-
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: LatLng(lat, lng),
-        initialZoom: 14,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.verifarmac.app',
-        ),
-        MarkerLayer(markers: pharmacyMarkers),
-      ],
-    );
-  }
-}
-
-class _InfoBanner extends StatelessWidget {
-  const _InfoBanner({
-    required this.message,
-    required this.icon,
-    required this.onRetry,
-    required this.label,
-  });
-  final String     message;
-  final IconData   icon;
-  final VoidCallback onRetry;
-  final String     label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Row(children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
-        TextButton(onPressed: onRetry, child: Text(label)),
-      ]),
-    );
-  }
-}
-
-class _PermissionBanner extends StatelessWidget {
-  const _PermissionBanner({
-    required this.message,
-    required this.onRetry,
-    required this.label,
-  });
-  final String       message;
-  final VoidCallback onRetry;
-  final String       label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Row(children: [
-        const Icon(Icons.location_off_rounded, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(message, style: const TextStyle(fontSize: 13)),
-        ),
-        TextButton(onPressed: onRetry, child: Text(label)),
+          ),
       ]),
     );
   }
