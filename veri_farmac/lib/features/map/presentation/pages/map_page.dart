@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../../../shared/widgets/app_loading.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/map_provider.dart';
 import '../widgets/pharmacy_marker.dart';
 
-// Coordenadas del centro de Pasto como vista inicial mientras carga el GPS
 const _pastoCenterLat = 1.2136;
 const _pastoCenterLng = -77.2811;
 
@@ -17,17 +16,17 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  GoogleMapController? _mapController;
+  final _mapController = MapController();
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(mapProvider.notifier).fetchLocation());
+    Future.microtask(() => ref.read(mapProvider.notifier).load());
   }
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -36,119 +35,128 @@ class _MapPageState extends ConsumerState<MapPage> {
     final state = ref.watch(mapProvider);
     final l10n  = context.l10n;
 
+    ref.listen(mapProvider, (prev, next) {
+      if (next.position != null && prev?.position == null) {
+        _mapController.move(
+          LatLng(next.position!.latitude, next.position!.longitude),
+          14,
+        );
+      }
+    });
+
+    final lat = state.position?.latitude  ?? _pastoCenterLat;
+    final lng = state.position?.longitude ?? _pastoCenterLng;
+
+    final markers = [
+      ...PharmacyMarker.create(
+        pharmacies: state.pharmacies,
+        onPress: (name) => ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(name))),
+      ),
+      if (state.position != null)
+        PharmacyMarker.userLocation(lat, lng),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.nearbyPharmacies),
         actions: [
-          // Contador de farmacias encontradas
-          if (state.pharmacies.isNotEmpty)
+          if (!state.isLoading)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(
                 child: Text(
-                  '${state.pharmacies.length} encontradas',
+                  state.pharmacies.isEmpty
+                      ? 'Sin resultados'
+                      : '${state.pharmacies.length} encontradas',
                   style: const TextStyle(fontSize: 13),
                 ),
               ),
             ),
         ],
       ),
-      body: Builder(builder: (context) {
-        if (state.isLoading) {
-          return AppLoading(message: l10n.gettingLocation);
-        }
-
-        if (state.permissionDenied) {
-          return Column(children: [
-            // Aun sin permiso mostramos las farmacias en Pasto
-            Expanded(child: _buildMap(state, centerOnPasto: true)),
-            _PermissionBanner(
-              message: l10n.locationPermissionNeeded,
-              onRetry: () => ref.read(mapProvider.notifier).fetchLocation(),
-              label: l10n.allowLocation,
+      body: Stack(children: [
+        // ── Mapa siempre visible ───────────────────────────────
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: LatLng(lat, lng),
+            initialZoom: 14,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.verifarmac.app',
             ),
-          ]);
-        }
-
-        if (state.error != null) {
-          return Center(child: Text(state.error!));
-        }
-
-        return _buildMap(state, centerOnPasto: false);
-      }),
-    );
-  }
-
-  Widget _buildMap(MapState state, {required bool centerOnPasto}) {
-    final lat = centerOnPasto
-        ? _pastoCenterLat
-        : state.position!.latitude;
-    final lng = centerOnPasto
-        ? _pastoCenterLng
-        : state.position!.longitude;
-
-    return Stack(children: [
-      GoogleMap(
-        onMapCreated:            (c) => _mapController = c,
-        initialCameraPosition:   CameraPosition(
-          target: LatLng(lat, lng),
-          zoom: 14,
+            MarkerLayer(markers: markers),
+          ],
         ),
-        myLocationEnabled:       !centerOnPasto,
-        myLocationButtonEnabled: !centerOnPasto,
-        markers: PharmacyMarker.create(
-          pharmacies: state.pharmacies,
-          onPress: (name) => ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(name))),
-        ),
-      ),
-      // Banner de carga de farmacias mientras el mapa ya se ve
-      if (state.isLoading)
-        const Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(children: [
-                SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+
+        // ── Indicador de carga sobre el mapa ──────────────────
+        if (state.isLoading)
+          Container(
+            color: Colors.black26,
+            child: Center(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 16),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(l10n.gettingLocation),
+                  ]),
                 ),
-                SizedBox(width: 12),
-                Text('Buscando farmacias...'),
+              ),
+            ),
+          ),
+
+        // ── Sin resultados ────────────────────────────────────
+        if (!state.isLoading && state.pharmacies.isEmpty)
+          Positioned(
+            top: 12, left: 0, right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'No se encontraron farmacias en esta zona',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ),
+          ),
+
+        // ── Permiso de ubicación denegado ─────────────────────
+        if (state.permissionDenied)
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Row(children: [
+                const Icon(Icons.location_off_rounded, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.locationPermissionNeeded,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ref.read(mapProvider.notifier).load(),
+                  child: Text(l10n.allowLocation),
+                ),
               ]),
             ),
           ),
-        ),
-    ]);
-  }
-}
-
-class _PermissionBanner extends StatelessWidget {
-  const _PermissionBanner({
-    required this.message,
-    required this.onRetry,
-    required this.label,
-  });
-  final String   message;
-  final VoidCallback onRetry;
-  final String   label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Row(children: [
-        const Icon(Icons.location_off_rounded, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(message, style: const TextStyle(fontSize: 13)),
-        ),
-        TextButton(onPressed: onRetry, child: Text(label)),
       ]),
     );
   }

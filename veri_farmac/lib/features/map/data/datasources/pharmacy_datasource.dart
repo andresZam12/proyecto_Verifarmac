@@ -1,20 +1,21 @@
-// Consulta farmacias reales usando la API de OpenStreetMap (Overpass).
-// Gratuita, sin API key. Datos reales actualizados por la comunidad OSM.
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class PharmacyDataSource {
-  PharmacyDataSource(this._dio);
-  final Dio _dio;
+  PharmacyDataSource() {
+    _dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {'User-Agent': 'VeriFarmac/1.0 (verifarmac@example.com)'},
+    ));
+  }
 
-  static const _overpassUrl = 'https://overpass-api.de/api/interpreter';
+  late final Dio _dio;
 
-  // Radio de búsqueda en metros alrededor de la ubicación
-  static const _radiusMeters = 3000;
-
-  // Coordenadas del centro de Pasto como respaldo si no hay GPS
   static const _pastoLat = 1.2136;
   static const _pastoLng = -77.2811;
+  // ~8 km en grados
+  static const _delta = 0.08;
 
   Future<List<Map<String, dynamic>>> findNearby({
     double? latitude,
@@ -23,65 +24,55 @@ class PharmacyDataSource {
     final lat = latitude  ?? _pastoLat;
     final lng = longitude ?? _pastoLng;
 
-    // Query Overpass QL: busca nodos y áreas con amenity=pharmacy en el radio
-    final query = '''
-[out:json][timeout:25];
-(
-  node["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);
-  way["amenity"="pharmacy"](around:$_radiusMeters,$lat,$lng);
-);
-out center;
-''';
+    // Bounding box: west, north, east, south
+    final viewbox = '${lng - _delta},${lat + _delta},${lng + _delta},${lat - _delta}';
 
-    final response = await _dio.post(
-      _overpassUrl,
-      data: query,
-      options: Options(
-        contentType: 'text/plain',
-        responseType: ResponseType.json,
-      ),
-    );
+    // Intenta primero con amenity=pharmacy, luego con búsqueda de texto
+    var results = await _searchNominatim({'amenity': 'pharmacy'}, viewbox);
+    if (results.isEmpty) {
+      results = await _searchNominatim({'q': 'farmacia drogueria'}, viewbox);
+    }
 
-    final elements = response.data['elements'] as List<dynamic>? ?? [];
-
-    return elements
-        .map((e) => _parseElement(e as Map<String, dynamic>))
-        .where((p) => p != null)
-        .cast<Map<String, dynamic>>()
-        .toList();
+    debugPrint('[Pharmacy] ${results.length} resultados para ($lat, $lng)');
+    return results;
   }
 
-  Map<String, dynamic>? _parseElement(Map<String, dynamic> element) {
-    // Los nodos tienen lat/lon directos; las vías tienen un centro calculado
-    final lat = (element['lat'] as num?)?.toDouble()
-        ?? (element['center']?['lat'] as num?)?.toDouble();
-    final lng = (element['lon'] as num?)?.toDouble()
-        ?? (element['center']?['lon'] as num?)?.toDouble();
+  Future<List<Map<String, dynamic>>> _searchNominatim(
+    Map<String, String> extra,
+    String viewbox,
+  ) async {
+    try {
+      final response = await _dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'format':       'json',
+          'limit':        '30',
+          'bounded':      '1',
+          'viewbox':      viewbox,
+          'countrycodes': 'co',
+          'addressdetails': '0',
+          ...extra,
+        },
+      );
 
-    if (lat == null || lng == null) return null;
-
-    final tags = element['tags'] as Map<String, dynamic>? ?? {};
-
-    final name    = tags['name'] as String?
-        ?? tags['brand'] as String?
-        ?? 'Farmacia';
-    final address = _buildAddress(tags);
-
-    return {
-      'name':      name,
-      'address':   address,
-      'latitude':  lat,
-      'longitude': lng,
-      'phone':     tags['phone'] as String?,
-      'opening':   tags['opening_hours'] as String?,
-    };
-  }
-
-  String _buildAddress(Map<String, dynamic> tags) {
-    final parts = <String>[
-      if (tags['addr:street'] != null) tags['addr:street'] as String,
-      if (tags['addr:housenumber'] != null) tags['addr:housenumber'] as String,
-    ];
-    return parts.isNotEmpty ? parts.join(' # ') : 'Pasto, Nariño';
+      final list = response.data as List<dynamic>;
+      return list.map((e) {
+        final m = e as Map<String, dynamic>;
+        // Toma el nombre corto antes de la primera coma del display_name
+        final display = m['display_name'] as String? ?? 'Farmacia';
+        final name    = (m['name'] as String?)?.isNotEmpty == true
+            ? m['name'] as String
+            : display.split(',').first.trim();
+        return {
+          'name':      name,
+          'address':   display,
+          'latitude':  double.parse(m['lat'] as String),
+          'longitude': double.parse(m['lon'] as String),
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('[Pharmacy] Nominatim error: $e');
+      return [];
+    }
   }
 }

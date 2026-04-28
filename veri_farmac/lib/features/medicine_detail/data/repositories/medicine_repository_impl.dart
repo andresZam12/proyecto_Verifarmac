@@ -1,4 +1,4 @@
-// Implementación del repositorio de medicamentos.
+                                                                                                                                                                                                                                                                                                                                              // Implementación del repositorio de medicamentos.
 // Usa la API pública del INVIMA en datos.gov.co para consultas reales.
 
 import '../../domain/entities/medicine.dart';

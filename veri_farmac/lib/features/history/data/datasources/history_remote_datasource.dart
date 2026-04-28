@@ -32,4 +32,11 @@ class HistoryRemoteDataSource {
   Future<void> delete(String id) async {
     await _supabase.from(_table).delete().eq('id', id);
   }
+
+  // Elimina todo el historial del usuario de Supabase
+  Future<void> deleteAll() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+    await _supabase.from(_table).delete().eq('user_id', userId);
+  }
 }

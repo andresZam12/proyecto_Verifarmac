@@ -53,6 +53,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       QuickScanButton(
                         onPress: () => context.push(AppRoutes.scanner),
                       ),
+                      const SizedBox(height: 12),
+
+                      // Acceso al mapa de farmacias
+                      _PharmacyCard(
+                        onPress: () => context.push(AppRoutes.map),
+                      ),
                       const SizedBox(height: 28),
 
                       // Tarjetas de resumen
@@ -83,6 +89,32 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           color: const Color(0xFFC62828),
                         ),
                       ]),
+                      const SizedBox(height: 12),
+                      Row(children: [
+                        _StatusCard(
+                          label: 'No encontrado',
+                          count: state.notFound,
+                          color: const Color(0xFFF57C00),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatusCard(
+                          label: 'Alertas',
+                          count: state.alerts,
+                          color: const Color(0xFF6A1B9A),
+                        ),
+                        const SizedBox(width: 12),
+                        _StatusCard(
+                          label: 'Inválidos',
+                          count: state.invalid,
+                          color: const Color(0xFF37474F),
+                        ),
+                      ]),
+                      const SizedBox(height: 24),
+
+                      // Acceso al historial
+                      _HistoryCard(
+                        onPress: () => context.push(AppRoutes.history),
+                      ),
                       const SizedBox(height: 24),
 
                       // Gráfica de distribución
@@ -105,6 +137,74 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
         ),
       ]),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.onPress});
+  final VoidCallback onPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return InkWell(
+      onTap: onPress,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Icon(Icons.history_rounded, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.history,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: color),
+        ]),
+      ),
+    );
+  }
+}
+
+class _PharmacyCard extends StatelessWidget {
+  const _PharmacyCard({required this.onPress});
+  final VoidCallback onPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return InkWell(
+      onTap: onPress,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(children: [
+          Icon(Icons.local_pharmacy_rounded, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.l10n.nearbyPharmacies,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: color),
+        ]),
+      ),
     );
   }
 }
