@@ -1,7 +1,7 @@
-// Botón principal para abrir el scanner directamente desde el dashboard.
+﻿// BotÃ³n principal para abrir el scanner directamente desde el dashboard.
 import 'package:flutter/material.dart';
+import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../l10n/app_localizations.dart';
 
 class QuickScanButton extends StatelessWidget {
   const QuickScanButton({super.key, required this.onPress});

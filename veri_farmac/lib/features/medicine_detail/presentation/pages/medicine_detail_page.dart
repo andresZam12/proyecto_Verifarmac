@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/widgets/app_loading.dart';
-import '../../../../shared/widgets/app_error_widget.dart';
-import '../../../../shared/widgets/app_empty_state.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../shared/widgets/confidence_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -13,11 +12,14 @@ import '../../domain/entities/medicine.dart';
 import '../providers/medicine_provider.dart';
 import '../widgets/status_badge.dart';
 
+const _kPrimary = Color(0xFF00478D);
+
 class MedicineDetailPage extends ConsumerStatefulWidget {
   const MedicineDetailPage({super.key, required this.scanResult});
   final ScanResult scanResult;
   @override
-  ConsumerState<MedicineDetailPage> createState() => _MedicineDetailPageState();
+  ConsumerState<MedicineDetailPage> createState() =>
+      _MedicineDetailPageState();
 }
 
 class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
@@ -58,54 +60,194 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
     final state = ref.watch(medicineProvider);
     final l10n  = context.l10n;
 
-    // Guardar en historial la primera vez que carga exitosamente
     if (state.status == MedicineStatus.loaded && !_historySaved) {
       _saveToHistory(state.medicine!);
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.result)),
-      body: switch (state.status) {
-        MedicineStatus.loading    => AppLoading(message: l10n.consultingInvima),
-        MedicineStatus.error      => AppErrorWidget(
-            message: state.error ?? 'Error',
-            onRetry: () => ref
-                .read(medicineProvider.notifier)
-                .loadByBarcode(_medicineId),
+      backgroundColor: context.bgColor,
+      body: Column(children: [
+
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: context.textDark),
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go('/dashboard'),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                l10n.result,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: context.textDark,
+                ),
+              ),
+            ]),
           ),
-        MedicineStatus.notFound   => AppEmptyState(
-            title:       l10n.medicineNotFound,
-            description: l10n.medicineNotFoundDesc,
-          ),
-        MedicineStatus.loaded     => _Detail(medicine: state.medicine!, l10n: l10n),
-        _                         => const SizedBox.shrink(),
-      },
+        ),
+
+        Expanded(
+          child: switch (state.status) {
+            MedicineStatus.loading => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: _kPrimary),
+                  const SizedBox(height: 16),
+                  Text(l10n.consultingInvima,
+                      style: TextStyle(color: context.textSub)),
+                ],
+              ),
+            ),
+            MedicineStatus.error => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: Color(0xFFBA1A1A), size: 52),
+                    const SizedBox(height: 16),
+                    Text(state.error ?? 'Error',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: context.textSub)),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: () => ref
+                          .read(medicineProvider.notifier)
+                          .loadByBarcode(_medicineId),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: _kPrimary),
+                      child: Text(l10n.retry),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            MedicineStatus.notFound => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 80, height: 80,
+                      decoration: BoxDecoration(
+                        color: context.pillBg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.search_off_rounded,
+                          color: _kPrimary, size: 40),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n.medicineNotFound,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: context.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.medicineNotFoundDesc,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13, color: context.textSub,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            MedicineStatus.loaded =>
+                _Detail(medicine: state.medicine!, l10n: l10n),
+            _ => const SizedBox.shrink(),
+          },
+        ),
+      ]),
     );
   }
 }
 
 class _Detail extends StatelessWidget {
   const _Detail({required this.medicine, required this.l10n});
-  final Medicine          medicine;
-  final AppLocalizations  l10n;
+  final Medicine         medicine;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(child: StatusBadge(condition: medicine.condition, large: true)),
-        const SizedBox(height: 20),
-        Text(
-          medicine.name,
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
+
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: context.cardBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: _kPrimary.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(children: [
+              StatusBadge(condition: medicine.condition, large: true),
+              const SizedBox(height: 16),
+              Text(
+                medicine.name,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: context.textDark,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ConfidenceBar(confidence: medicine.condition.isSafe ? 0.95 : 0.4),
+            ]),
+          ),
         ),
         const SizedBox(height: 20),
-        const ConfidenceBar(confidence: 0.95),
-        const SizedBox(height: 24),
+
+        if (!medicine.condition.isSafe) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8F8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFCDD2)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.warning_rounded,
+                  color: Color(0xFFBA1A1A), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.unsafeMedicineWarning,
+                  style: const TextStyle(
+                    color: Color(0xFFBA1A1A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         _InfoSection(title: l10n.sanitaryRecord, children: [
           _InfoRow(label: l10n.code,       value: medicine.sanitaryRecord),
           _InfoRow(label: l10n.status,     value: medicine.condition.label),
@@ -114,34 +256,18 @@ class _Detail extends StatelessWidget {
             _InfoRow(label: l10n.holder,   value: medicine.holder!),
         ]),
         const SizedBox(height: 16),
+
         _InfoSection(title: l10n.medicineInfo, children: [
           if (medicine.activeIngredient != null)
-            _InfoRow(label: l10n.activeIngredient,   value: medicine.activeIngredient!),
+            _InfoRow(label: l10n.activeIngredient,
+                value: medicine.activeIngredient!),
           if (medicine.concentration != null)
-            _InfoRow(label: l10n.concentration,      value: medicine.concentration!),
+            _InfoRow(label: l10n.concentration,
+                value: medicine.concentration!),
           if (medicine.pharmaceuticalForm != null)
-            _InfoRow(label: l10n.pharmaceuticalForm, value: medicine.pharmaceuticalForm!),
+            _InfoRow(label: l10n.pharmaceuticalForm,
+                value: medicine.pharmaceuticalForm!),
         ]),
-        const SizedBox(height: 24),
-        if (!medicine.condition.isSafe)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade200),
-            ),
-            child: Row(children: [
-              Icon(Icons.warning_rounded, color: Colors.red.shade700),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.unsafeMedicineWarning,
-                  style: TextStyle(color: Colors.red.shade700, fontSize: 13),
-                ),
-              ),
-            ]),
-          ),
       ]),
     );
   }
@@ -155,19 +281,35 @@ class _InfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-      ),
-      const SizedBox(height: 10),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(children: children),
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Text(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: _kPrimary,
+            letterSpacing: 1.0,
+          ),
         ),
+      ),
+      Container(
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.cardBorder),
+          boxShadow: context.cardShadow(opacity: 0.06),
+        ),
+        child: Column(children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              Divider(
+                height: 1, indent: 16, endIndent: 16,
+                color: context.dividerColor,
+              ),
+          ],
+        ]),
       ),
     ]);
   }
@@ -181,27 +323,27 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
           width: 130,
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.5),
-                ),
+            style: TextStyle(
+              fontSize: 12,
+              color: context.textSub,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 13,
+              color: context.textDark,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ]),

@@ -23,6 +23,8 @@ class DashboardState {
   int get suspicious  => stats['sospechoso']    ?? 0;
   int get notFound    => stats['no_encontrado'] ?? 0;
   int get alerts      => invalid + suspicious;
+  int get unknown     => stats['no_encontrado'] ?? 0;
+  int get problematic => suspicious + invalid;
 }
 
 class DashboardNotifier extends StateNotifier<DashboardState> {

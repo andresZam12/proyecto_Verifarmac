@@ -1,13 +1,13 @@
-// Toggle para cambiar entre modo Barcode y OCR.
+﻿// Toggle para cambiar entre modo Barcode y OCR.
 
 import 'package:flutter/material.dart';
+import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../l10n/app_localizations.dart';
 
 // Modos de escaneo disponibles
 enum ScanMode { barcode, ocr }
 
-// Toggle que permite cambiar entre escaneo por código de barras y por texto OCR.
+// Toggle que permite cambiar entre escaneo por cÃ³digo de barras y por texto OCR.
 class ScanModeToggle extends StatelessWidget {
   const ScanModeToggle({
     super.key,
@@ -49,7 +49,7 @@ class ScanModeToggle extends StatelessWidget {
   }
 }
 
-// Botón individual del toggle
+// BotÃ³n individual del toggle
 class _ModeButton extends StatelessWidget {
   const _ModeButton({
     required this.icon,

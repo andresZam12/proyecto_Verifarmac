@@ -1,6 +1,6 @@
-import 'package:fl_chart/fl_chart.dart';
+﻿import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../../core/utils/extensions/context_extensions.dart';
 import '../providers/dashboard_provider.dart';
 
 class StatsDonutChart extends StatelessWidget {

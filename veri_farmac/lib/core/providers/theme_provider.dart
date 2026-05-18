@@ -37,7 +37,7 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     switch (value) {
       case 'light':  return ThemeMode.light;
       case 'dark':   return ThemeMode.dark;
-      default:       return ThemeMode.system;
+      default:       return ThemeMode.light;
     }
   }
 }

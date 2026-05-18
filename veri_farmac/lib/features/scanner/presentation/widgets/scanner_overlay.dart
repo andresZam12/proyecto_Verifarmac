@@ -1,4 +1,3 @@
-// Marco visual sobre la cámara con área de escaneo resaltada.
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'scan_mode_toggle.dart';
@@ -13,35 +12,17 @@ class ScannerOverlay extends StatelessWidget {
 
   final String?  message;
   final bool     highlight;
-  // El modo determina el tamaño del área: OCR usa un rectángulo más grande
   final ScanMode mode;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Fondo oscuro con el recorte del área de escaneo
-        CustomPaint(
-          painter: _OverlayPainter(highlight: highlight, mode: mode),
-          child: const SizedBox.expand(),
-        ),
-
-        // Mensaje de instrucciones
-        Positioned(
-          bottom: 120,
-          left: 0,
-          right: 0,
-          child: Text(
-            message ?? 'Aim at the medicine code',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontFamily: 'Poppins',
-            ),
-          ),
-        ),
-      ],
+    return CustomPaint(
+      painter: _OverlayPainter(
+        highlight: highlight,
+        mode: mode,
+        message: message,
+      ),
+      child: const SizedBox.expand(),
     );
   }
 }
@@ -50,38 +31,84 @@ class _OverlayPainter extends CustomPainter {
   const _OverlayPainter({
     this.highlight = false,
     this.mode = ScanMode.barcode,
+    this.message,
   });
   final bool     highlight;
   final ScanMode mode;
+  final String?  message;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final darkPaint = Paint()..color = Colors.black.withValues(alpha: 0.6);
+    // ── Fondo oscuro con recorte ────────────────────────────
+    final darkPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.58);
 
-    // OCR necesita un área más grande para capturar texto del empaque
-    final areaWidth  = mode == ScanMode.ocr ? size.width * 0.92 : size.width * 0.75;
-    final areaHeight = mode == ScanMode.ocr ? areaWidth * 0.60  : areaWidth * 0.50;
-    final left       = (size.width  - areaWidth)  / 2;
-    final top        = (size.height - areaHeight) / 2;
-    final scanArea   = Rect.fromLTWH(left, top, areaWidth, areaHeight);
+    final areaWidth  = mode == ScanMode.ocr
+        ? size.width * 0.92
+        : size.width * 0.75;
+    final areaHeight = mode == ScanMode.ocr
+        ? areaWidth * 0.60
+        : areaWidth * 0.50;
+    final left   = (size.width  - areaWidth)  / 2;
+    final top    = (size.height - areaHeight) / 2;
+    final scanArea = Rect.fromLTWH(left, top, areaWidth, areaHeight);
 
-    // Fondo oscuro con recorte
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addRRect(RRect.fromRectAndRadius(scanArea, const Radius.circular(12)))
+      ..addRRect(RRect.fromRectAndRadius(scanArea, const Radius.circular(16)))
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(path, darkPaint);
 
-    // Borde: azul normal, verde cuando hay detección
-    final borderPaint = Paint()
-      ..color       = highlight ? Colors.green : AppColors.primary
-      ..style       = PaintingStyle.stroke
-      ..strokeWidth = highlight ? 3.5 : 2.5;
+    // ── Marcadores de esquina (L-shape) ─────────────────────
+    final color  = highlight ? Colors.green : AppColors.primary;
+    const cLen   = 26.0; // longitud de cada brazo
+    const cRad   = 16.0; // radio de la esquina redondeada del área
+    const stroke = 3.5;
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(scanArea, const Radius.circular(12)),
-      borderPaint,
-    );
+    final cornerPaint = Paint()
+      ..color       = color
+      ..style       = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap   = StrokeCap.round;
+
+    // Top-left
+    _drawCorner(canvas, cornerPaint,
+        Offset(left + cRad, top), Offset(left + cRad + cLen, top));
+    _drawCorner(canvas, cornerPaint,
+        Offset(left, top + cRad), Offset(left, top + cRad + cLen));
+
+    // Top-right
+    final right = left + areaWidth;
+    _drawCorner(canvas, cornerPaint,
+        Offset(right - cRad, top), Offset(right - cRad - cLen, top));
+    _drawCorner(canvas, cornerPaint,
+        Offset(right, top + cRad), Offset(right, top + cRad + cLen));
+
+    // Bottom-left
+    final bottom = top + areaHeight;
+    _drawCorner(canvas, cornerPaint,
+        Offset(left + cRad, bottom), Offset(left + cRad + cLen, bottom));
+    _drawCorner(canvas, cornerPaint,
+        Offset(left, bottom - cRad), Offset(left, bottom - cRad - cLen));
+
+    // Bottom-right
+    _drawCorner(canvas, cornerPaint,
+        Offset(right - cRad, bottom), Offset(right - cRad - cLen, bottom));
+    _drawCorner(canvas, cornerPaint,
+        Offset(right, bottom - cRad), Offset(right, bottom - cRad - cLen));
+
+    // Puntos en esquinas
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(left + cRad, top), 4, dotPaint);
+    canvas.drawCircle(Offset(right - cRad, top), 4, dotPaint);
+    canvas.drawCircle(Offset(left + cRad, bottom), 4, dotPaint);
+    canvas.drawCircle(Offset(right - cRad, bottom), 4, dotPaint);
+  }
+
+  void _drawCorner(Canvas canvas, Paint paint, Offset a, Offset b) {
+    canvas.drawLine(a, b, paint);
   }
 
   @override

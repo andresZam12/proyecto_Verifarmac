@@ -1,11 +1,9 @@
-// Pantalla de selección de idioma — accesible desde Settings.
-// Ya no aparece en el flujo de inicio; el usuario la accede cuando quiera.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/theme_provider.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../../core/utils/extensions/context_extensions.dart';
+
+const _kPrimary = Color(0xFF00478D);
 
 class LanguagePage extends ConsumerWidget {
   const LanguagePage({super.key});
@@ -16,58 +14,93 @@ class LanguagePage extends ConsumerWidget {
     final l10n          = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.language)),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              l10n.chooseLanguage,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 32),
-            _LanguageOption(
-              flag:       '🇨🇴',
-              name:       l10n.spanish,
-              isSelected: currentLocale?.languageCode != 'en',
-              onPress: () {
-                ref
-                    .read(localeNotifierProvider.notifier)
-                    .changeLocale(const Locale('es'));
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 12),
-            _LanguageOption(
-              flag:       '🇺🇸',
-              name:       l10n.english,
-              isSelected: currentLocale?.languageCode == 'en',
-              onPress: () {
-                ref
-                    .read(localeNotifierProvider.notifier)
-                    .changeLocale(const Locale('en'));
-                Navigator.pop(context);
-              },
-            ),
-          ],
+      backgroundColor: context.bgColor,
+      body: Column(children: [
+
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: context.textDark),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                l10n.language,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: context.textDark,
+                ),
+              ),
+            ]),
+          ),
         ),
-      ),
+
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.chooseLanguage,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: context.textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  currentLocale?.languageCode == 'en'
+                      ? 'Select your preferred language'
+                      : 'Selecciona tu idioma preferido',
+                  style: TextStyle(fontSize: 14, color: context.textSub),
+                ),
+                const SizedBox(height: 32),
+
+                _LangOption(
+                  flag:       '🇨🇴',
+                  name:       l10n.spanish,
+                  isSelected: currentLocale?.languageCode != 'en',
+                  onPress: () {
+                    ref
+                        .read(localeNotifierProvider.notifier)
+                        .changeLocale(const Locale('es'));
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _LangOption(
+                  flag:       '🇺🇸',
+                  name:       l10n.english,
+                  isSelected: currentLocale?.languageCode == 'en',
+                  onPress: () {
+                    ref
+                        .read(localeNotifierProvider.notifier)
+                        .changeLocale(const Locale('en'));
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }
 
-class _LanguageOption extends StatelessWidget {
-  const _LanguageOption({
+class _LangOption extends StatelessWidget {
+  const _LangOption({
     required this.flag,
     required this.name,
     required this.isSelected,
     required this.onPress,
   });
-
   final String       flag;
   final String       name;
   final bool         isSelected;
@@ -81,16 +114,19 @@ class _LanguageOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          color: isSelected ? const Color(0xFFE9EEF9) : context.cardColor,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-            width: isSelected ? 2 : 0.5,
+            color: isSelected ? _kPrimary : context.dividerColor,
+            width: isSelected ? 2 : 1,
           ),
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : Colors.transparent,
+          boxShadow: [
+            BoxShadow(
+              color: _kPrimary.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Row(children: [
           Text(flag, style: const TextStyle(fontSize: 28)),
@@ -101,13 +137,26 @@ class _LanguageOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.primary : null,
+                color: isSelected ? _kPrimary : context.textDark,
               ),
             ),
           ),
-          if (isSelected)
-            const Icon(Icons.check_circle_rounded,
-                color: AppColors.primary, size: 20),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 24, height: 24,
+            decoration: BoxDecoration(
+              color: isSelected ? _kPrimary : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? _kPrimary : context.dividerColor,
+                width: 1.5,
+              ),
+            ),
+            child: isSelected
+                ? const Icon(Icons.check_rounded,
+                    color: Colors.white, size: 14)
+                : null,
+          ),
         ]),
       ),
     );

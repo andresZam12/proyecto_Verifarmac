@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/settings/presentation/pages/language_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/scanner/presentation/pages/scanner_page.dart';
@@ -24,8 +26,9 @@ import '../../features/scanner/domain/entities/scan_result.dart';
 class AppRoutes {
   AppRoutes._();
 
-  static const splash   = '/';
-  static const login    = '/login';
+  static const splash    = '/';
+  static const login     = '/login';
+  static const register  = '/register';
   static const dashboard = '/dashboard';
   static const scanner  = '/scanner';
   static const history  = '/history';
@@ -46,16 +49,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
 
-    // Redirige al login si no hay sesión activa
+    // Redirige al login si no hay sesión activa (Supabase o local)
     redirect: (context, state) {
-      final hasSession = Supabase.instance.client.auth.currentSession != null;
-      final currentPath = state.matchedLocation;
+      final hasSupabaseSession =
+          Supabase.instance.client.auth.currentSession != null;
+      final hasLocalAuth = ref.read(authProvider).isAuthenticated;
+      final currentPath  = state.matchedLocation;
 
-      // Rutas que no requieren sesión
-      const publicRoutes = [AppRoutes.splash, AppRoutes.login];
+      const publicRoutes = [AppRoutes.splash, AppRoutes.login, AppRoutes.register];
       final isPublic = publicRoutes.contains(currentPath);
 
-      if (!hasSession && !isPublic) return AppRoutes.login;
+      if (!hasSupabaseSession && !hasLocalAuth && !isPublic) {
+        return AppRoutes.login;
+      }
       return null;
     },
 
@@ -67,6 +73,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        builder: (context, state) => const RegisterPage(),
       ),
       GoRoute(
         path: AppRoutes.dashboard,
