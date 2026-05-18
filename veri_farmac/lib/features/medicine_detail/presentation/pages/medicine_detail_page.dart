@@ -39,11 +39,16 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
   Future<void> _saveToHistory(Medicine medicine) async {
     if (_historySaved) return;
     _historySaved = true;
+    // Si el escáner detectó vencimiento físico, se prioriza sobre el estado
+    // del registro INVIMA (que solo indica autorización sanitaria, no por lote).
+    final status = widget.scanResult.status == 'vencido'
+        ? 'vencido'
+        : medicine.condition.label.toLowerCase();
     final entry = HistoryEntryModel(
       id:             widget.scanResult.id,
       medicineName:   medicine.name,
       sanitaryRecord: medicine.sanitaryRecord,
-      status:         medicine.condition.label.toLowerCase(),
+      status:         status,
       method:         widget.scanResult.method.name,
       createdAt:      widget.scanResult.scannedAt,
       laboratory:     medicine.laboratory,
@@ -166,8 +171,11 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
                 ),
               ),
             ),
-            MedicineStatus.loaded =>
-                _Detail(medicine: state.medicine!, l10n: l10n),
+            MedicineStatus.loaded => _Detail(
+              medicine:          state.medicine!,
+              l10n:              l10n,
+              physicallyExpired: widget.scanResult.status == 'vencido',
+            ),
             _ => const SizedBox.shrink(),
           },
         ),
@@ -177,9 +185,14 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
 }
 
 class _Detail extends StatelessWidget {
-  const _Detail({required this.medicine, required this.l10n});
+  const _Detail({
+    required this.medicine,
+    required this.l10n,
+    this.physicallyExpired = false,
+  });
   final Medicine         medicine;
   final AppLocalizations l10n;
+  final bool             physicallyExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +234,68 @@ class _Detail extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        if (!medicine.condition.isSafe) ...[
+        // Alerta de vencimiento físico detectado por OCR
+        if (physicallyExpired) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade300),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.event_busy_rounded, color: Colors.orange.shade800, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    'Producto físicamente vencido',
+                    style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'La fecha de vencimiento detectada en el empaque indica que este lote ya expiró. '
+                    'El registro INVIMA mostrado refleja la autorización sanitaria del producto, '
+                    'no la vigencia del lote específico.',
+                    style: TextStyle(color: Colors.orange.shade800, fontSize: 12),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Recordatorio general para medicamentos vigentes (registro OK, pero verificar fecha física)
+        if (medicine.condition == MedicineCondition.valid && !physicallyExpired) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.info_outline_rounded, color: Colors.blue.shade700, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'El registro INVIMA indica que este producto está autorizado para la venta en Colombia. '
+                  'Verifica también la fecha de vencimiento física impresa en el empaque.',
+                  style: TextStyle(color: Colors.blue.shade700, fontSize: 12),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Advertencia de medicamento no seguro (registro vencido/inválido/sospechoso)
+        if (!medicine.condition.isSafe && !physicallyExpired) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(

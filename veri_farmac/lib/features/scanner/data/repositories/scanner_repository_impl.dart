@@ -91,6 +91,28 @@ class ScannerRepositoryImpl implements IScannerRepository {
       medicine = results.isNotEmpty ? results.first as MedicineModel? : null;
     }
 
+    // Detectar fecha de vencimiento física en el texto OCR.
+    // La API de INVIMA solo registra la autorización sanitaria, no la fecha
+    // de vencimiento por lote. Si el empaque tiene una fecha vencida, se
+    // sobrescribe el estado a 'vencido' para que el historial lo registre
+    // correctamente aunque el registro INVIMA esté vigente.
+    final expDate   = _extractExpirationDate(text);
+    final isExpired = expDate != null &&
+        DateTime(expDate.year, expDate.month + 1).isBefore(DateTime.now());
+
+    if (isExpired && medicine != null) {
+      return ScanResultModel(
+        id:             const Uuid().v4(),
+        scannedValue:   text,
+        method:         ScanMethod.ocr,
+        scannedAt:      DateTime.now(),
+        confidence:     0.85,
+        medicineName:   medicine.name,
+        sanitaryRecord: medicine.sanitaryRecord,
+        status:         'vencido',
+      );
+    }
+
     return _buildResult(
       scannedValue: text,
       method:       ScanMethod.ocr,
@@ -145,4 +167,21 @@ class ScannerRepositoryImpl implements IScannerRepository {
   // EAN/UPC barcodes are purely numeric (8–14 digits)
   bool _isEanBarcode(String value) =>
       RegExp(r'^\d{8,14}$').hasMatch(value.trim());
+
+  // Extrae la fecha de vencimiento del texto OCR del empaque.
+  // Soporta: "Vence: 11/2025", "VENCE: 11 /2025", "Vencimiento\n11/2025", "Exp.: 11-2025"
+  DateTime? _extractExpirationDate(String text) {
+    final regex = RegExp(
+      r'(?:vence|vencimiento|fecha\s*de\s*venc\w*|exp(?:ira\w*)?\.?)'
+      r'\s*:?\s*'
+      r'(\d{1,2})\s*[\/\-]\s*(\d{4})',  // permite espacios antes/después del separador
+      caseSensitive: false,
+    );
+    final match = regex.firstMatch(text);
+    if (match == null) return null;
+    final month = int.tryParse(match.group(1)!);
+    final year  = int.tryParse(match.group(2)!);
+    if (month == null || year == null || month < 1 || month > 12) return null;
+    return DateTime(year, month);
+  }
 }
