@@ -102,6 +102,7 @@ class SettingsPage extends ConsumerWidget {
               const _Footer(),
             ],
           ),
+        ),
       ]),
     );
   }
