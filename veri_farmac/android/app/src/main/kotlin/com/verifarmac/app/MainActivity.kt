@@ -1,4 +1,4 @@
-package com.example.veri_farmac
+package com.verifarmac.app
 
 import io.flutter.embedding.android.FlutterActivity
 
