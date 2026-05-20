@@ -1,6 +1,16 @@
 # Claude Code local settings
 .claude/
 .mcp.json
+.github/java-upgrade/
+
+# Unused Flutter platform stubs (app targets Android only)
+/linux/
+/macos/
+/web/
+/windows/
+
+# Temporary documents
+*.html
 
 # Miscellaneous
 *.class
