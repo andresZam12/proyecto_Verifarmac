@@ -8,6 +8,7 @@ import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../history/data/datasources/history_local_datasource.dart';
 import '../../../history/data/models/history_entry_model.dart';
 import '../../../scanner/domain/entities/scan_result.dart';
+import '../../data/models/medicine_model.dart';
 import '../../domain/entities/medicine.dart';
 import '../providers/medicine_provider.dart';
 import '../widgets/status_badge.dart';
@@ -36,6 +37,25 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
     );
   }
 
+  // Si el escaneo detectó vencimiento físico, lo impone sobre el estado de INVIMA.
+  Medicine _effectiveMedicine(Medicine medicine) {
+    if (widget.scanResult.status == 'vencido' &&
+        medicine.condition != MedicineCondition.expired) {
+      return MedicineModel(
+        id:                 medicine.id,
+        name:               medicine.name,
+        sanitaryRecord:     medicine.sanitaryRecord,
+        laboratory:         medicine.laboratory,
+        condition:          MedicineCondition.expired,
+        holder:             medicine.holder,
+        activeIngredient:   medicine.activeIngredient,
+        concentration:      medicine.concentration,
+        pharmaceuticalForm: medicine.pharmaceuticalForm,
+      );
+    }
+    return medicine;
+  }
+
   Future<void> _saveToHistory(Medicine medicine) async {
     if (_historySaved) return;
     _historySaved = true;
@@ -61,7 +81,30 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
     final l10n  = context.l10n;
 
     if (state.status == MedicineStatus.loaded && !_historySaved) {
-      _saveToHistory(state.medicine!);
+      // Usa el medicamento efectivo para que el vencimiento físico quede en historial
+      _saveToHistory(_effectiveMedicine(state.medicine!));
+    }
+
+    // Caso: INVIMA no encontró el medicamento pero el escaneo detectó vencimiento físico
+    if (state.status == MedicineStatus.notFound &&
+        widget.scanResult.status == 'vencido' &&
+        !_historySaved) {
+      _historySaved = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final entry = HistoryEntryModel(
+            id:             widget.scanResult.id,
+            medicineName:   widget.scanResult.medicineName ?? 'Medicamento desconocido',
+            sanitaryRecord: widget.scanResult.sanitaryRecord ?? '—',
+            status:         'vencido',
+            method:         widget.scanResult.method.name,
+            createdAt:      widget.scanResult.scannedAt,
+            confidence:     widget.scanResult.confidence,
+          );
+          await HistoryLocalDataSource().save(entry);
+          if (mounted) ref.read(dashboardProvider.notifier).load();
+        } catch (_) {}
+      });
     }
 
     return Scaffold(
@@ -167,7 +210,7 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
               ),
             ),
             MedicineStatus.loaded =>
-                _Detail(medicine: state.medicine!, l10n: l10n),
+                _Detail(medicine: _effectiveMedicine(state.medicine!), l10n: l10n),
             _ => const SizedBox.shrink(),
           },
         ),

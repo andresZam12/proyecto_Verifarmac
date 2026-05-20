@@ -27,7 +27,7 @@ class ClaudeAiDataSource {
             'role': 'user',
             'content': [
               {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': imageBase64}},
-              {'type': 'text', 'text': 'Analiza este empaque de medicamento colombiano.\nResponde SOLO en JSON:\n{"isAuthentic": true/false, "confidence": 0.0-1.0, "observations": "texto"}'},
+              {'type': 'text', 'text': 'Analiza este empaque de medicamento colombiano. Busca la fecha de vencimiento visible en el empaque (puede decir "Vence", "Exp", "Vencimiento", "F.V.", "FV", etc.).\nResponde SOLO en JSON con exactamente estas claves:\n{"isAuthentic": true/false, "confidence": 0.0-1.0, "expiryDate": "MM/YYYY o null si no se ve", "observations": "texto"}'},
             ],
           },
         ],

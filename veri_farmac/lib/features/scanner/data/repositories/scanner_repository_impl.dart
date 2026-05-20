@@ -82,6 +82,8 @@ class ScannerRepositoryImpl implements IScannerRepository {
     // Si el texto contiene un código INVIMA, busca por registro.
     // Si no, busca por nombre (palabras del empaque).
     final invimaCode = _extractInvimaCode(text);
+    final expiryDate = _extractExpiryDate(text);
+    final expired    = _isExpired(expiryDate);
     MedicineModel? medicine;
 
     if (invimaCode != null) {
@@ -89,6 +91,20 @@ class ScannerRepositoryImpl implements IScannerRepository {
     } else {
       final results = await invima.search(text);
       medicine = results.isNotEmpty ? results.first as MedicineModel? : null;
+    }
+
+    // La fecha física impresa en el empaque tiene prioridad sobre el estado INVIMA
+    if (expired) {
+      return ScanResultModel(
+        id:             const Uuid().v4(),
+        scannedValue:   text,
+        method:         ScanMethod.ocr,
+        scannedAt:      DateTime.now(),
+        confidence:     medicine != null ? 0.90 : 0.70,
+        medicineName:   medicine?.name,
+        sanitaryRecord: medicine?.sanitaryRecord,
+        status:         'vencido',
+      );
     }
 
     return _buildResult(
@@ -105,14 +121,26 @@ class ScannerRepositoryImpl implements IScannerRepository {
     final isAuthentic = analysis['isAuthentic'] as bool? ?? false;
     final confidence  = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
     final observation = analysis['observations'] as String? ?? '';
+    final expiryDate  = _parseExpiryString(analysis['expiryDate'] as String?);
+    final expired     = _isExpired(expiryDate);
+
+    final String status;
+    if (expired) {
+      status = 'vencido';
+    } else if (isAuthentic) {
+      status = 'vigente';
+    } else {
+      status = 'sospechoso';
+    }
+
     return ScanResultModel(
       id:           const Uuid().v4(),
       scannedValue: imagePath,
       method:       ScanMethod.visual,
       scannedAt:    DateTime.now(),
       confidence:   confidence,
-      status:       isAuthentic ? 'vigente' : 'sospechoso',
-      error:        isAuthentic ? null : observation,
+      status:       status,
+      error:        status == 'sospechoso' ? observation : null,
     );
   }
 
@@ -136,13 +164,56 @@ class ScannerRepositoryImpl implements IScannerRepository {
     );
   }
 
-  // Extrae un código INVIMA del texto OCR del empaque
+  // Extrae un código INVIMA del texto OCR del empaque.
+  // Acepta espacios alrededor del guion: "2008M- 007952" o "2008M-007952".
   String? _extractInvimaCode(String text) {
-    final regex = RegExp(r'INVIMA\s*\d{4}[A-Z]-?\d{6,7}', caseSensitive: false);
+    final regex = RegExp(
+      r'INVIMA\s*\d{4}[A-Z]\s*-?\s*\d{6,7}',
+      caseSensitive: false,
+    );
     return regex.firstMatch(text)?.group(0);
   }
 
   // EAN/UPC barcodes are purely numeric (8–14 digits)
   bool _isEanBarcode(String value) =>
       RegExp(r'^\d{8,14}$').hasMatch(value.trim());
+
+  // Extrae la fecha de vencimiento del texto OCR del empaque.
+  // Acepta formatos: MM/YYYY, MM/YY y espacios alrededor del separador.
+  // Ej: "VENCE: 07/2020", "EXP. 07 / 2020", "F.V.: 07/20"
+  static final _expiryPattern = RegExp(
+    r'(?:vence|vencimiento|f\.?\s*venc\.?|fv|exp(?:iry|ires)?)'
+    r'\s*[:\.]?\s*'
+    r'(\d{1,2})\s*[/\-\.]\s*(\d{2,4})',
+    caseSensitive: false,
+  );
+
+  DateTime? _extractExpiryDate(String text) {
+    final match = _expiryPattern.firstMatch(text);
+    if (match == null) return null;
+    return _parseMonthYear(match.group(1)!, match.group(2)!);
+  }
+
+  DateTime? _parseExpiryString(String? raw) {
+    if (raw == null || raw.isEmpty || raw == 'null') return null;
+    final parts = raw.trim().split(RegExp(r'\s*[/\-\.]\s*'));
+    if (parts.length < 2) return null;
+    return _parseMonthYear(parts[0], parts[1]);
+  }
+
+  DateTime? _parseMonthYear(String monthStr, String yearStr) {
+    try {
+      final month = int.parse(monthStr.trim());
+      var   year  = int.parse(yearStr.trim());
+      if (year < 100) year += 2000;
+      if (month < 1 || month > 12) return null;
+      // Vence el último día de ese mes
+      return DateTime(year, month + 1, 1).subtract(const Duration(days: 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isExpired(DateTime? date) =>
+      date != null && date.isBefore(DateTime.now());
 }
