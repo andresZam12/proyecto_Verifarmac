@@ -23,13 +23,21 @@ class HistoryState {
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
-  HistoryNotifier(this._fetch, this._delete, this._deleteAll, this._sync)
-      : super(const HistoryState());
+  HistoryNotifier(
+    this._fetch,
+    this._delete,
+    this._deleteAll,
+    this._sync,
+    this._save,
+    this._pullRemote,
+  ) : super(const HistoryState());
 
   final FetchHistoryUseCase       _fetch;
   final DeleteHistoryEntryUseCase _delete;
   final DeleteAllHistoryUseCase   _deleteAll;
   final SyncHistoryUseCase        _sync;
+  final SaveHistoryEntryUseCase   _save;
+  final PullRemoteHistoryUseCase  _pullRemote;
 
   Future<void> load() async {
     state = const HistoryState(isLoading: true);
@@ -38,6 +46,17 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     } catch (_) {
       state = const HistoryState(error: AppStrings.errorLoadingHistory);
     }
+  }
+
+  // Guarda un escaneo: local primero, y sube a Supabase si hay sesión.
+  Future<void> save(HistoryEntry entry) => _save(entry);
+
+  // Trae lo que falte desde Supabase y sube lo pendiente local.
+  // Se usa al abrir el historial, solo si hay un usuario autenticado.
+  Future<void> refreshWithCloud(String userId) async {
+    await _pullRemote(userId);
+    await _sync(userId);
+    await load();
   }
 
   Future<void> delete(String id) async {
@@ -88,5 +107,7 @@ final historyProvider =
     DeleteHistoryEntryUseCase(repo),
     DeleteAllHistoryUseCase(repo),
     SyncHistoryUseCase(repo),
+    SaveHistoryEntryUseCase(repo),
+    PullRemoteHistoryUseCase(repo),
   );
 });

@@ -8,9 +8,12 @@ class HistoryRemoteDataSource {
   final _supabase = Supabase.instance.client;
   static const _table = 'scan_history';
 
-  // Sube una lista de entradas a Supabase
+  // Sube una lista de entradas a Supabase, asociadas al usuario autenticado.
+  // Sin sesión activa no hay a quién asociarlas, así que no sube nada.
   Future<void> uploadEntries(List<HistoryEntryModel> entries) async {
-    final data = entries.map((e) => e.toJson()).toList();
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+    final data = entries.map((e) => {...e.toJson(), 'user_id': userId}).toList();
     await _supabase.from(_table).upsert(data);
   }
 

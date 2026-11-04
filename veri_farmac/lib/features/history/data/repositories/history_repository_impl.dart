@@ -75,6 +75,16 @@ class HistoryRepositoryImpl implements IHistoryRepository {
   }
 
   @override
+  Future<void> pullRemote(String userId) async {
+    try {
+      final remoteEntries = await _remote.downloadHistory(userId);
+      await _local.mergeRemote(remoteEntries);
+    } catch (_) {
+      // Sin conexión o sin datos remotos — se usa lo que haya en local
+    }
+  }
+
+  @override
   Future<Map<String, int>> getStatistics() {
     return _local.getStatistics();
   }

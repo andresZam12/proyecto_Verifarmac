@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../features/scanner/domain/entities/scan_result.dart';
@@ -19,7 +20,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(historyProvider.notifier).load());
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    Future.microtask(() => userId != null
+        ? ref.read(historyProvider.notifier).refreshWithCloud(userId)
+        : ref.read(historyProvider.notifier).load());
   }
 
   @override

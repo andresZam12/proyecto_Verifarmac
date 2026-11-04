@@ -53,6 +53,24 @@ class HistoryLocalDataSource {
     await prefs.setString(_storageKey, jsonEncode(list));
   }
 
+  // Combina entradas descargadas de Supabase con el historial local,
+  // sin duplicar las que ya existen (por id).
+  Future<void> mergeRemote(List<HistoryEntryModel> remoteEntries) async {
+    final prefs       = await SharedPreferences.getInstance();
+    final list        = await _fetchAll();
+    final existingIds = list.map((e) => e['id']).toSet();
+
+    for (final entry in remoteEntries) {
+      if (!existingIds.contains(entry.id)) {
+        list.add({...entry.toJson(), 'sincronizado': true});
+      }
+    }
+
+    list.sort((a, b) =>
+        (b['creado_en'] as String).compareTo(a['creado_en'] as String));
+    await prefs.setString(_storageKey, jsonEncode(list));
+  }
+
   Future<Map<String, int>> getStatistics() async {
     final list  = await _fetchAll();
     final stats = <String, int>{};

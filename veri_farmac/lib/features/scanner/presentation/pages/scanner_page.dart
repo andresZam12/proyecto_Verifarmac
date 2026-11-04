@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../../history/data/datasources/history_local_datasource.dart';
 import '../../../history/data/models/history_entry_model.dart';
+import '../../../history/presentation/providers/history_provider.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../providers/scanner_provider.dart';
 import '../widgets/scanner_overlay.dart';
@@ -297,7 +297,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
         createdAt:      DateTime.now(),
         confidence:     0.0,
       );
-      await HistoryLocalDataSource().save(entry);
+      await ref.read(historyProvider.notifier).save(entry);
       ref.read(dashboardProvider.notifier).load();
     } catch (_) {}
   }

@@ -18,6 +18,10 @@ abstract class IHistoryRepository {
   // Sincroniza el historial local con Supabase
   Future<void> sync(String userId);
 
+  // Descarga el historial del usuario desde Supabase y lo combina con el local
+  // (ej: al iniciar sesión en un dispositivo nuevo o tras reinstalar la app)
+  Future<void> pullRemote(String userId);
+
   // Obtiene conteo de escaneos por estado (para el dashboard)
   Future<Map<String, int>> getStatistics();
 }

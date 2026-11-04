@@ -43,6 +43,14 @@ class SyncHistoryUseCase {
   Future<void> call(String userId) => _repo.sync(userId);
 }
 
+// Descarga el historial remoto del usuario y lo combina con el local.
+class PullRemoteHistoryUseCase {
+  const PullRemoteHistoryUseCase(this._repo);
+  final IHistoryRepository _repo;
+
+  Future<void> call(String userId) => _repo.pullRemote(userId);
+}
+
 // Obtiene estadísticas para el dashboard.
 class GetStatisticsUseCase {
   const GetStatisticsUseCase(this._repo);
