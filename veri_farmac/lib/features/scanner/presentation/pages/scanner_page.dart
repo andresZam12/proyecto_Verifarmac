@@ -32,8 +32,7 @@ class ScannerPage extends ConsumerStatefulWidget {
 class _ScannerPageState extends ConsumerState<ScannerPage>
     with WidgetsBindingObserver {
   final _ocr = OcrDataSource();
-  CameraController?        _camController;
-  MobileScannerController? _burstController;
+  CameraController? _camController;
 
   ScanMode _mode         = ScanMode.ocr;
   bool     _torchEnabled = false;
@@ -51,7 +50,6 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _camController?.dispose();
-    _burstController?.dispose();
     _ocr.dispose();
     super.dispose();
   }
@@ -128,12 +126,8 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       backgroundColor: Colors.black,
       body: Stack(children: [
 
-        // ── Preview: ráfaga en vivo de código de barras ──────
-        if (_burstController != null)
-          MobileScanner(controller: _burstController, fit: BoxFit.cover)
-
-        // ── Preview: foto congelada mientras se analiza (OCR/IA) ──
-        else if (_capturedPhotoPath != null)
+        // ── Preview: foto congelada mientras se analiza (los 3 modos) ──
+        if (_capturedPhotoPath != null)
           SizedBox.expand(
             child: Image.file(File(_capturedPhotoPath!), fit: BoxFit.cover),
           )
@@ -321,25 +315,37 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       return;
     }
 
-    if (_mode == ScanMode.barcode) {
-      await _scanBarcodeBurst();
-      return;
-    }
-
     final cam = _camController;
     if (cam == null || !cam.value.isInitialized) return;
     setState(() => _processing = true);
 
     try {
+      // Fuerza un enfoque al centro antes de disparar — sin esto la cámara
+      // puede tomar la foto todavía enfocando, sobre todo en tomas cercanas
+      // como un código de barras, y eso arruina tanto OCR como la lectura
+      // del código.
+      try {
+        await cam.setFocusMode(FocusMode.auto);
+        await cam.setFocusPoint(const Offset(0.5, 0.5));
+        await Future.delayed(const Duration(milliseconds: 300));
+      } catch (_) {
+        // Algunos dispositivos no soportan foco manual — se ignora y se
+        // sigue con el foco automático que ya trae la cámara.
+      }
+
       final photo = await cam.takePicture();
       // Congela la foto tomada en pantalla — antes no había ninguna señal
-      // visual de que el obturador sí había capturado algo.
+      // visual de que el obturador sí había capturado algo. Los 3 modos
+      // se comportan igual: foto quieta → se analiza según el modo.
       setState(() => _capturedPhotoPath = photo.path);
 
-      if (_mode == ScanMode.visual) {
-        ref.read(scannerProvider.notifier).analyzeImage(photo.path);
-      } else {
-        await _analyzeOcrStill(photo.path);
+      switch (_mode) {
+        case ScanMode.visual:
+          ref.read(scannerProvider.notifier).analyzeImage(photo.path);
+        case ScanMode.barcode:
+          await _analyzeBarcodeStill(photo.path);
+        case ScanMode.ocr:
+          await _analyzeOcrStill(photo.path);
       }
     } catch (e) {
       debugPrint('[Scanner] Error capturando foto: $e');
@@ -366,63 +372,28 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
     ref.read(scannerProvider.notifier).scanOcr(text);
   }
 
-  // Al presionar el obturador en modo código de barras se arranca una
-  // ráfaga breve de detección en vivo (el motor de ML Kit vía mobile_scanner
-  // reintenta en varios frames y ajusta foco), en vez de analizar una sola
-  // foto estática — con una sola foto fallaba con la mayoría de códigos
-  // reales. La cámara normal se libera mientras dura la ráfaga para no
-  // competir por el hardware con mobile_scanner, y se recupera al terminar.
-  Future<void> _scanBarcodeBurst() async {
-    setState(() => _processing = true);
-
-    await _camController?.dispose();
-    _camController = null;
-
-    // autoStart (por defecto true) hace que la propia cámara arranque en
-    // cuanto el widget MobileScanner se monta — no se llama start() a mano
-    // aquí porque hacerlo antes de que el widget exista en el árbol no
-    // tenía efecto (la cámara nunca llegaba a activarse a tiempo).
-    final controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
-    );
-
-    final completer = Completer<String?>();
-    final sub = controller.barcodes.listen((capture) {
-      final code = capture.barcodes.isNotEmpty
-          ? capture.barcodes.first.rawValue
-          : null;
-      if (code != null && code.isNotEmpty && !completer.isCompleted) {
-        completer.complete(code);
-      }
-    });
-
-    if (mounted) setState(() => _burstController = controller);
-
-    String? code;
+  // Decodifica el código de barras de la foto ya congelada — mismo patrón
+  // que OCR/IA visual, en vez de un escaneo en vivo con su propia vista.
+  Future<void> _analyzeBarcodeStill(String imagePath) async {
+    final controller = MobileScannerController();
     try {
-      code = await completer.future.timeout(
-        const Duration(seconds: 6),
-        onTimeout: () => null,
-      );
-    } catch (e) {
-      debugPrint('[Scanner] Error en ráfaga de código de barras: $e');
+      final result = await controller.analyzeImage(imagePath);
+      final code   = result?.barcodes.isNotEmpty == true
+          ? result!.barcodes.first.rawValue
+          : null;
+
+      if (code == null || code.isEmpty) {
+        _showSnack(
+          'No se detectó ningún código de barras en la foto. Intenta de '
+          'nuevo con mejor enfoque y luz.',
+        );
+        setState(() { _processing = false; _capturedPhotoPath = null; });
+        return;
+      }
+      ref.read(scannerProvider.notifier).scanBarcode(code);
     } finally {
-      await sub.cancel();
       await controller.dispose();
-      if (mounted) setState(() => _burstController = null);
     }
-
-    await _startCamera(); // recupera la cámara normal para el próximo intento
-
-    if (code == null || code.isEmpty) {
-      _showSnack(
-        'No se detectó ningún código de barras. Mantén el celular quieto '
-        'y el código centrado.',
-      );
-      setState(() => _processing = false);
-      return;
-    }
-    ref.read(scannerProvider.notifier).scanBarcode(code);
   }
 
   Future<void> _saveNotFound(ScanResult result) async {

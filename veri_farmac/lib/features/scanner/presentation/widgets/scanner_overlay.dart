@@ -43,11 +43,16 @@ class _OverlayPainter extends CustomPainter {
     final darkPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.58);
 
-    // Barcode usa un recuadro angosto; OCR y análisis visual fotografían
-    // el empaque completo, por eso comparten el área ancha.
-    final isWideArea = mode != ScanMode.barcode;
-    final areaWidth   = isWideArea ? size.width * 0.92 : size.width * 0.75;
-    final areaHeight  = isWideArea ? areaWidth * 0.60  : areaWidth * 0.50;
+    // Barcode usa un recuadro angosto (el código es pequeño y rectangular).
+    // OCR necesita un recuadro grande y alto para alcanzar a cubrir todo
+    // el texto del empaque (nombre, registro, fecha de vencimiento...).
+    // IA visual analiza el empaque completo, así que el recuadro ocupa
+    // prácticamente toda la pantalla.
+    final (areaWidth, areaHeight) = switch (mode) {
+      ScanMode.barcode => (size.width * 0.75, size.width * 0.75 * 0.50),
+      ScanMode.ocr     => (size.width * 0.94, size.height * 0.68),
+      ScanMode.visual  => (size.width * 0.97, size.height * 0.86),
+    };
     final left   = (size.width  - areaWidth)  / 2;
     final top    = (size.height - areaHeight) / 2;
     final scanArea = Rect.fromLTWH(left, top, areaWidth, areaHeight);
