@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../data/datasources/claude_ai_datasource.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../../data/datasources/open_food_facts_datasource.dart';
@@ -73,10 +74,10 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
         status: ScannerStatus.success,
         result: await _byImage(imagePath),
       );
-    } catch (_) {
-      state = const ScannerState(
+    } catch (e) {
+      state = ScannerState(
         status: ScannerStatus.error,
-        error: AppStrings.errorAnalyzeImage,
+        error: e is ServerException ? e.message : AppStrings.errorAnalyzeImage,
       );
     }
   }
