@@ -25,11 +25,6 @@ class AuthState {
   bool get isAuthenticated => status == AuthStatus.authenticated;
 }
 
-const _kValidCredentials = {
-  'deividjulianalvarado@gmail.com': r'Deivid10812$',
-  'giovannyzambrano@gmail.com':     '123456',
-};
-
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._signIn, this._signOut) : super(const AuthState());
   final SignInWithGoogleUseCase _signIn;
@@ -50,14 +45,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (trimmed.isEmpty || password.isEmpty) return;
     state = const AuthState(status: AuthStatus.loading);
 
-    // Intentar Supabase primero (usuarios registrados con email/password)
     try {
       await Supabase.instance.client.auth.signInWithPassword(
         email: trimmed,
         password: password,
       );
       state = const AuthState(status: AuthStatus.authenticated);
-      return;
     } catch (e) {
       final msg = e.toString().toLowerCase();
       if (msg.contains('not confirmed') || msg.contains('email not confirmed')) {
@@ -66,20 +59,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
           error:  'Debes confirmar tu correo antes de iniciar sesión. '
                   'Revisa tu bandeja de entrada (y la carpeta de spam).',
         );
-        return;
+      } else {
+        state = const AuthState(
+          status: AuthStatus.error,
+          error:  'Correo o contraseña incorrectos.',
+        );
       }
-      // Otro error → probar credenciales hardcodeadas de prueba
-    }
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    final expected = _kValidCredentials[trimmed];
-    if (expected != null && expected == password) {
-      state = AuthState(status: AuthStatus.authenticated, localEmail: trimmed);
-    } else {
-      state = const AuthState(
-        status: AuthStatus.error,
-        error:  'Correo o contraseña incorrectos.',
-      );
     }
   }
 
