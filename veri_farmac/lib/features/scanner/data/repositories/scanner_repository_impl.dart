@@ -5,6 +5,8 @@ import '../../domain/repositories/i_scanner_repository.dart';
 import '../datasources/claude_ai_datasource.dart';
 import '../datasources/ocr_datasource.dart';
 import '../datasources/open_food_facts_datasource.dart';
+import '../datasources/upc_lookup_datasource.dart';
+import '../models/barcode_product_info.dart';
 import '../models/scan_result_model.dart';
 import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../../medicine_detail/data/models/medicine_model.dart';
@@ -16,22 +18,65 @@ class ScannerRepositoryImpl implements IScannerRepository {
     required this.ocr,
     required this.claude,
     required this.openFoodFacts,
+    required this.upcLookup,
   });
   final InvimaApiDataSource       invima;
   final OcrDataSource             ocr;
   final ClaudeAiDataSource        claude;
   final OpenFoodFactsDatasource   openFoodFacts;
+  final UpcLookupDataSource       upcLookup;
+
+  // Palabras que sugieren que un producto es un medicamento o producto
+  // natural con fines terapéuticos — lo único que VeriFarmac puede
+  // verificar contra INVIMA. Heurística de mejor esfuerzo: las bases de
+  // código de barras genéricas (Open Food Facts, UPCItemDB) no tienen una
+  // categoría "medicamento" estandarizada, así que se busca por palabras
+  // clave en el nombre y la categoría que sí reportan.
+  static const _healthKeywords = [
+    'medic', 'farmac', 'drug', 'pill', 'tablet', 'tableta', 'capsul',
+    'jarabe', 'syrup', 'suplement', 'supplement', 'vitamin', 'vitamina',
+    'salud', 'health', 'natural', 'herbal', 'fitoterap', 'analges',
+    'antibiot', 'antiinflamat', 'dolor', 'pain relief', 'pharma',
+  ];
+
+  bool _looksLikeHealthProduct(BarcodeProductInfo info) {
+    final text = '${info.name} ${info.category ?? ''}'.toLowerCase();
+    return _healthKeywords.any(text.contains);
+  }
 
   @override
   Future<ScanResult> processBarcode(String barcode) async {
     if (_isEanBarcode(barcode)) {
-      // Paso 1: buscar el nombre del producto en Open Food Facts
-      final productName = await openFoodFacts.getProductName(barcode);
+      // Paso 1: buscar el producto — primero en Open Food Facts (sobre todo
+      // alimentos) y, si no aparece, en UPCItemDB como respaldo (cobertura
+      // general de consumo, tampoco específica de medicamentos: no existe
+      // una base pública gratuita que cruce código de barras ↔ INVIMA).
+      final info = await openFoodFacts.getProductInfo(barcode)
+          ?? await upcLookup.getProductInfo(barcode);
 
-      if (productName != null) {
-        // Paso 2: usar ese nombre para buscar en INVIMA
-        debugPrint('[Scanner] OFF encontró: $productName — buscando en INVIMA...');
-        final medicine = await invima.findByName(productName);
+      if (info != null) {
+        // El producto existe en una base genérica pero no parece de salud
+        // (ej. tecnología, aseo, alimentos sin más): se le avisa al usuario
+        // en vez de intentar — y fallar — una búsqueda sin sentido en INVIMA.
+        if (!_looksLikeHealthProduct(info)) {
+          return ScanResultModel(
+            id:           const Uuid().v4(),
+            scannedValue: barcode,
+            method:       ScanMethod.barcode,
+            scannedAt:    DateTime.now(),
+            confidence:   0.0,
+            medicineName: info.name,
+            error:        'Este código corresponde a "${info.name}"'
+                          '${info.category != null ? ' (${info.category})' : ''}, '
+                          'que no parece ser un medicamento ni un producto natural.\n'
+                          'VeriFarmac solo verifica medicamentos y productos '
+                          'naturales — este producto está fuera de su alcance.',
+          );
+        }
+
+        // Paso 2: usar el nombre para buscar en INVIMA
+        debugPrint('[Scanner] Producto encontrado: ${info.name} — buscando en INVIMA...');
+        final medicine = await invima.findByName(info.name);
         if (medicine != null) {
           return _buildResult(
             scannedValue: barcode,
@@ -40,21 +85,21 @@ class ScannerRepositoryImpl implements IScannerRepository {
             confidence:   0.75,
           );
         }
-        // OFF encontró nombre pero INVIMA no lo tiene
+        // Se identificó como producto de salud pero INVIMA no lo tiene
         return ScanResultModel(
           id:           const Uuid().v4(),
           scannedValue: barcode,
           method:       ScanMethod.barcode,
           scannedAt:    DateTime.now(),
           confidence:   0.0,
-          error:        'Producto identificado como "$productName" pero no se '
+          error:        'Producto identificado como "${info.name}" pero no se '
                         'encontró en INVIMA.\n'
                         'Usa el modo OCR y apunta al número de registro '
                         '(ej. "INVIMA 2008M-XXXXXXX") del empaque.',
         );
       }
 
-      // Paso 3: EAN no está en Open Food Facts
+      // Paso 3: EAN no está en ninguna base de datos de productos
       return ScanResultModel(
         id:           const Uuid().v4(),
         scannedValue: barcode,

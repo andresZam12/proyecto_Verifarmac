@@ -6,6 +6,7 @@
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../models/barcode_product_info.dart';
 
 class OpenFoodFactsDatasource {
   OpenFoodFactsDatasource() {
@@ -21,8 +22,9 @@ class OpenFoodFactsDatasource {
 
   late final Dio _dio;
 
-  /// Devuelve el nombre del producto para un código EAN, o null si no se encuentra.
-  Future<String?> getProductName(String ean) async {
+  /// Devuelve nombre + categoría del producto para un código EAN, o null si
+  /// no se encuentra.
+  Future<BarcodeProductInfo?> getProductInfo(String ean) async {
     try {
       debugPrint('[OFF] Buscando EAN: $ean');
       final response = await _dio.get(
@@ -51,8 +53,10 @@ class OpenFoodFactsDatasource {
         return null;
       }
 
-      debugPrint('[OFF] Nombre encontrado: $name');
-      return name;
+      final category = (product['categories'] as String?)?.trim();
+
+      debugPrint('[OFF] Nombre encontrado: $name (categoría: $category)');
+      return BarcodeProductInfo(name: name, category: category);
     } catch (e) {
       debugPrint('[OFF] Error: $e');
       return null;
