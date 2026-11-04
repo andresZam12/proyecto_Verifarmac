@@ -3,6 +3,10 @@
 .mcp.json
 .github/java-upgrade/
 
+# Claves de API locales — nunca se commitean. Ver env/dev.json.example
+# para el formato. Se usan con: flutter run --dart-define-from-file=env/dev.json
+/env/dev.json
+
 # Unused Flutter platform stubs (app targets Android only)
 /linux/
 /macos/
