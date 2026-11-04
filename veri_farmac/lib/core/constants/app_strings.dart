@@ -38,6 +38,7 @@ class AppStrings {
   static const analyzing        = 'Analizando...';
   static const scanModeBarcode  = 'Código';
   static const scanModeOcr      = 'Texto';
+  static const visualAnalysisFallbackName = 'Análisis visual (IA)';
 
   // ─── History ───────────────────────────────────────────────
   static const history                 = 'Historial';

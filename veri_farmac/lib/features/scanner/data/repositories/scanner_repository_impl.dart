@@ -117,30 +117,41 @@ class ScannerRepositoryImpl implements IScannerRepository {
 
   @override
   Future<ScanResult> analyzeImage(String imagePath) async {
-    final analysis    = await claude.analyzePackaging(imagePath);
-    final isAuthentic = analysis['isAuthentic'] as bool? ?? false;
-    final confidence  = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
-    final observation = analysis['observations'] as String? ?? '';
-    final expiryDate  = _parseExpiryString(analysis['expiryDate'] as String?);
-    final expired     = _isExpired(expiryDate);
+    final analysis     = await claude.analyzePackaging(imagePath);
+    final isAuthentic  = analysis['isAuthentic'] as bool? ?? false;
+    final confidence   = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
+    final observation  = analysis['observations'] as String? ?? '';
+    final expiryDate   = _parseExpiryString(analysis['expiryDate'] as String?);
+    final expired      = _isExpired(expiryDate);
+    final registryText = analysis['registrySanitario'] as String?;
+
+    // La IA no decide vigencia por sí sola: si logró leer un registro
+    // sanitario en el empaque, se contrasta contra INVIMA igual que en OCR.
+    MedicineModel? medicine;
+    final code = registryText != null ? _extractInvimaCode(registryText) : null;
+    if (code != null) {
+      medicine = await invima.findByRegistry(code);
+    }
 
     final String status;
     if (expired) {
       status = 'vencido';
-    } else if (isAuthentic) {
-      status = 'vigente';
+    } else if (medicine != null) {
+      status = medicine.condition.name;
     } else {
-      status = 'sospechoso';
+      status = isAuthentic ? 'vigente' : 'sospechoso';
     }
 
     return ScanResultModel(
-      id:           const Uuid().v4(),
-      scannedValue: imagePath,
-      method:       ScanMethod.visual,
-      scannedAt:    DateTime.now(),
-      confidence:   confidence,
-      status:       status,
-      error:        status == 'sospechoso' ? observation : null,
+      id:             const Uuid().v4(),
+      scannedValue:   imagePath,
+      method:         ScanMethod.visual,
+      scannedAt:      DateTime.now(),
+      confidence:     medicine != null ? 0.85 : confidence,
+      medicineName:   medicine?.name,
+      sanitaryRecord: medicine?.sanitaryRecord,
+      status:         status,
+      error:          observation.isNotEmpty ? observation : null,
     );
   }
 

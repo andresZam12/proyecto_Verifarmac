@@ -775,6 +775,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OPEN'**
   String get openStatus;
+
+  /// No description provided for @scanModeVisual.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Visual'**
+  String get scanModeVisual;
+
+  /// No description provided for @aimAtPackageVisual.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo of the package to analyze with AI'**
+  String get aimAtPackageVisual;
+
+  /// No description provided for @aiObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'AI observations'**
+  String get aiObservations;
 }
 
 class _AppLocalizationsDelegate

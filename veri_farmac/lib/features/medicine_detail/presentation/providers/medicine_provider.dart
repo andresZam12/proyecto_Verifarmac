@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../scanner/domain/entities/scan_result.dart';
 import '../../data/datasources/invima_api_datasource.dart';
+import '../../data/models/medicine_model.dart';
 import '../../data/repositories/medicine_repository_impl.dart';
 import '../../domain/entities/medicine.dart';
 import '../../domain/usecases/get_medicine_usecase.dart';
@@ -48,6 +51,22 @@ class MedicineNotifier extends StateNotifier<MedicineState> {
     } catch (e) {
       state = MedicineState(status: MedicineStatus.error, error: e.toString());
     }
+  }
+
+  // El análisis visual con IA no siempre puede leer un registro INVIMA en el
+  // empaque (empaque deteriorado, ángulo, etc). Cuando no hay nada contra qué
+  // consultar, se muestra directamente el veredicto de la IA sin llamar a INVIMA.
+  void loadFromVisualAnalysis(ScanResult result) {
+    state = MedicineState(
+      status: MedicineStatus.loaded,
+      medicine: MedicineModel(
+        id:             result.id,
+        name:           result.medicineName ?? AppStrings.visualAnalysisFallbackName,
+        sanitaryRecord: result.sanitaryRecord ?? '—',
+        laboratory:     '—',
+        condition:      Medicine.parseCondition(result.status ?? ''),
+      ),
+    );
   }
 }
 

@@ -350,4 +350,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get openStatus => 'OPEN';
+
+  @override
+  String get scanModeVisual => 'AI Visual';
+
+  @override
+  String get aimAtPackageVisual =>
+      'Take a photo of the package to analyze with AI';
+
+  @override
+  String get aiObservations => 'AI observations';
 }

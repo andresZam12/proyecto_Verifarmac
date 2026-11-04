@@ -5,8 +5,8 @@ import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../shared/widgets/confidence_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
-import '../../../history/data/datasources/history_local_datasource.dart';
 import '../../../history/data/models/history_entry_model.dart';
+import '../../../history/presentation/providers/history_provider.dart';
 import '../../../scanner/domain/entities/scan_result.dart';
 import '../../data/models/medicine_model.dart';
 import '../../domain/entities/medicine.dart';
@@ -32,9 +32,16 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(medicineProvider.notifier).loadByBarcode(_medicineId),
-    );
+    final result = widget.scanResult;
+    // El análisis visual con IA no siempre deja un registro INVIMA legible
+    // para consultar — en ese caso se usa directamente el veredicto de la IA.
+    if (result.method == ScanMethod.visual && result.sanitaryRecord == null) {
+      ref.read(medicineProvider.notifier).loadFromVisualAnalysis(result);
+    } else {
+      Future.microtask(
+        () => ref.read(medicineProvider.notifier).loadByBarcode(_medicineId),
+      );
+    }
   }
 
   // Si el escaneo detectó vencimiento físico, lo impone sobre el estado de INVIMA.
@@ -70,7 +77,7 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
       confidence:     widget.scanResult.confidence,
     );
     try {
-      await HistoryLocalDataSource().save(entry);
+      await ref.read(historyProvider.notifier).save(entry);
       ref.read(dashboardProvider.notifier).load();
     } catch (_) {}
   }
@@ -101,7 +108,7 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
             createdAt:      widget.scanResult.scannedAt,
             confidence:     widget.scanResult.confidence,
           );
-          await HistoryLocalDataSource().save(entry);
+          await ref.read(historyProvider.notifier).save(entry);
           if (mounted) ref.read(dashboardProvider.notifier).load();
         } catch (_) {}
       });
@@ -210,7 +217,13 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
               ),
             ),
             MedicineStatus.loaded =>
-                _Detail(medicine: _effectiveMedicine(state.medicine!), l10n: l10n),
+                _Detail(
+                  medicine: _effectiveMedicine(state.medicine!),
+                  l10n:     l10n,
+                  aiNote:   widget.scanResult.method == ScanMethod.visual
+                      ? widget.scanResult.error
+                      : null,
+                ),
             _ => const SizedBox.shrink(),
           },
         ),
@@ -220,9 +233,10 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
 }
 
 class _Detail extends StatelessWidget {
-  const _Detail({required this.medicine, required this.l10n});
+  const _Detail({required this.medicine, required this.l10n, this.aiNote});
   final Medicine         medicine;
   final AppLocalizations l10n;
+  final String?          aiNote;
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +299,40 @@ class _Detail extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        if (aiNote != null && aiNote!.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: context.pillBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.cardBorder),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.auto_awesome_rounded, color: _kPrimary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    l10n.aiObservations,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _kPrimary,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    aiNote!,
+                    style: TextStyle(fontSize: 13, color: context.textSub, height: 1.4),
+                  ),
+                ]),
               ),
             ]),
           ),
