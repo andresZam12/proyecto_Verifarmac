@@ -52,8 +52,14 @@ class InvimaApiDataSource {
       if (result != null) return result;
     }
 
-    // Intento 3: full-text search como último recurso
-    return _queryFullText(clean);
+    // Sin fallback de texto libre aquí a propósito: un registro sanitario
+    // es un identificador exacto, no una frase de búsqueda. Si no coincide
+    // tal cual con el campo registrosanitario, el búsqueda de texto libre
+    // de Socrata ($q) puede devolver OTRO medicamento cuyo nombre o
+    // laboratorio comparte alguna palabra — lo que oculta justo el caso que
+    // esta app existe para detectar: un código alterado/adulterado que no
+    // corresponde a ningún registro real.
+    return null;
   }
 
   // Busca por nombre del producto.
