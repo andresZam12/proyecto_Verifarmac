@@ -5,9 +5,9 @@ import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 
 // Modos de escaneo disponibles
-enum ScanMode { barcode, ocr }
+enum ScanMode { barcode, ocr, visual }
 
-// Toggle que permite cambiar entre escaneo por cÃ³digo de barras y por texto OCR.
+// Toggle que permite cambiar entre código de barras, texto OCR y análisis visual con IA.
 class ScanModeToggle extends StatelessWidget {
   const ScanModeToggle({
     super.key,
@@ -43,13 +43,20 @@ class ScanModeToggle extends StatelessWidget {
             isSelected: currentMode == ScanMode.ocr,
             onPress:    () => onChange(ScanMode.ocr),
           ),
+          const SizedBox(width: 4),
+          _ModeButton(
+            icon:       Icons.auto_awesome_rounded,
+            label:      l10n.scanModeVisual,
+            isSelected: currentMode == ScanMode.visual,
+            onPress:    () => onChange(ScanMode.visual),
+          ),
         ],
       ),
     );
   }
 }
 
-// BotÃ³n individual del toggle
+// Botón individual del toggle
 class _ModeButton extends StatelessWidget {
   const _ModeButton({
     required this.icon,

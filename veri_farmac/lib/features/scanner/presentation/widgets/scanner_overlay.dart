@@ -43,12 +43,11 @@ class _OverlayPainter extends CustomPainter {
     final darkPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.58);
 
-    final areaWidth  = mode == ScanMode.ocr
-        ? size.width * 0.92
-        : size.width * 0.75;
-    final areaHeight = mode == ScanMode.ocr
-        ? areaWidth * 0.60
-        : areaWidth * 0.50;
+    // Barcode usa un recuadro angosto; OCR y análisis visual fotografían
+    // el empaque completo, por eso comparten el área ancha.
+    final isWideArea = mode != ScanMode.barcode;
+    final areaWidth   = isWideArea ? size.width * 0.92 : size.width * 0.75;
+    final areaHeight  = isWideArea ? areaWidth * 0.60  : areaWidth * 0.50;
     final left   = (size.width  - areaWidth)  / 2;
     final top    = (size.height - areaHeight) / 2;
     final scanArea = Rect.fromLTWH(left, top, areaWidth, areaHeight);

@@ -1,12 +1,18 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../history/data/models/history_entry_model.dart';
 import '../../../history/presentation/providers/history_provider.dart';
+import '../../../scanner/domain/entities/scan_result.dart';
+import '../../data/datasources/claude_ai_datasource.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../providers/scanner_provider.dart';
 import '../widgets/scanner_overlay.dart';
@@ -26,10 +32,13 @@ class ScannerPage extends ConsumerStatefulWidget {
 class _ScannerPageState extends ConsumerState<ScannerPage>
     with WidgetsBindingObserver {
   final _ocr = OcrDataSource();
-  CameraController? _camController;
+  CameraController?        _camController;
+  MobileScannerController? _burstController;
 
-  bool _torchEnabled = false;
-  bool _processing   = false;
+  ScanMode _mode         = ScanMode.ocr;
+  bool     _torchEnabled = false;
+  bool     _processing   = false;
+  String?  _capturedPhotoPath; // congela la foto tomada mientras se analiza (OCR/IA)
 
   @override
   void initState() {
@@ -42,6 +51,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _camController?.dispose();
+    _burstController?.dispose();
     _ocr.dispose();
     super.dispose();
   }
@@ -56,6 +66,11 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
   }
 
   // ── Cámara ───────────────────────────────────────────────────
+  // Los 3 modos (código de barras, OCR, IA visual) comparten la misma
+  // cámara y el mismo obturador: se toma una foto quieta y luego se
+  // decide qué analizar según el modo seleccionado. Así se evita que
+  // un escaneo en vivo (p. ej. de código de barras) capture datos
+  // erróneos mientras el usuario todavía está apuntando/moviendo el celular.
 
   Future<void> _startCamera() async {
     try {
@@ -75,8 +90,14 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       if (!mounted) { ctrl.dispose(); return; }
       setState(() => _camController = ctrl);
     } catch (e) {
-      debugPrint('[OCR cam] Error iniciando cámara: $e');
+      debugPrint('[Scanner cam] Error iniciando cámara: $e');
     }
+  }
+
+  void _onModeChange(ScanMode mode) {
+    if (mode == _mode || _processing) return;
+    setState(() => _mode = mode);
+    ref.read(scannerProvider.notifier).reset();
   }
 
   // ── Build ────────────────────────────────────────────────────
@@ -90,25 +111,35 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       if (current.status == ScannerStatus.success && current.result != null) {
         context.push(AppRoutes.medicine, extra: current.result);
         ref.read(scannerProvider.notifier).reset();
-        setState(() { _processing = false; });
+        setState(() { _processing = false; _capturedPhotoPath = null; });
       }
       if (current.status == ScannerStatus.error) {
-        setState(() { _processing = false; });
+        setState(() { _processing = false; _capturedPhotoPath = null; });
         final r = current.result;
-        if (r != null) _saveNotFound(r.scannedValue);
+        if (r != null) _saveNotFound(r);
       }
     });
 
-    final isAnalyzing = scannerState.status == ScannerStatus.analyzing;
-    final camReady    = _camController != null &&
+    final isAnalyzing  = scannerState.status == ScannerStatus.analyzing || _processing;
+    final camReady     = _camController != null &&
                         _camController!.value.isInitialized;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(children: [
 
-        // ── Preview de cámara ────────────────────────────────
-        if (camReady)
+        // ── Preview: ráfaga en vivo de código de barras ──────
+        if (_burstController != null)
+          MobileScanner(controller: _burstController, fit: BoxFit.cover)
+
+        // ── Preview: foto congelada mientras se analiza (OCR/IA) ──
+        else if (_capturedPhotoPath != null)
+          SizedBox.expand(
+            child: Image.file(File(_capturedPhotoPath!), fit: BoxFit.cover),
+          )
+
+        // ── Preview de cámara en vivo ─────────────────────────
+        else if (camReady)
           SizedBox.expand(
             child: FittedBox(
               fit: BoxFit.cover,
@@ -125,7 +156,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
           ),
 
         // ── Overlay de encuadre ──────────────────────────────
-        const ScannerOverlay(mode: ScanMode.ocr),
+        ScannerOverlay(mode: _mode),
 
         // ── Gradiente superior ───────────────────────────────
         Positioned(
@@ -189,14 +220,33 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
           ),
         ),
 
+        // ── Toggle de modo (código de barras / OCR / IA visual) ──
+        Positioned(
+          top: 72, left: 0, right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: Center(
+              child: ScanModeToggle(currentMode: _mode, onChange: _onModeChange),
+            ),
+          ),
+        ),
+
         // ── Pill: instrucción ────────────────────────────────
         if (!_processing && scannerState.status != ScannerStatus.error)
           Positioned(
             bottom: 150, left: 32, right: 32,
             child: _StatusPill(
               color: _kPrimary,
-              icon:  Icons.document_scanner_rounded,
-              text:  l10n.aimAtPackageText,
+              icon:  switch (_mode) {
+                ScanMode.barcode => Icons.qr_code_scanner_rounded,
+                ScanMode.visual  => Icons.auto_awesome_rounded,
+                ScanMode.ocr     => Icons.document_scanner_rounded,
+              },
+              text:  switch (_mode) {
+                ScanMode.barcode => l10n.aimAtBarcode,
+                ScanMode.visual  => l10n.aimAtPackageVisual,
+                ScanMode.ocr     => l10n.aimAtPackageText,
+              },
             ),
           ),
 
@@ -238,13 +288,19 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
             onDismiss: () => ref.read(scannerProvider.notifier).reset(),
           ),
 
-        // ── Shutter button ───────────────────────────────────
+        // ── Shutter button (igual en los 3 modos: primero se
+        // toma la foto quieta, luego se analiza según el modo) ──
         Positioned(
           bottom: 52, left: 0, right: 0,
           child: Center(
             child: _ShutterButton(
               onPress:   _onShutterPressed,
               isLoading: isAnalyzing,
+              icon:      switch (_mode) {
+                ScanMode.barcode => Icons.qr_code_scanner_rounded,
+                ScanMode.visual  => Icons.auto_awesome_rounded,
+                ScanMode.ocr     => Icons.document_scanner_rounded,
+              },
             ),
           ),
         ),
@@ -256,44 +312,127 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
 
   Future<void> _onShutterPressed() async {
     if (_processing) return;
+
+    if (_mode == ScanMode.visual && !ClaudeAiDataSource.isConfigured) {
+      _showSnack(
+        'El análisis con IA no está configurado en esta compilación '
+        '(falta CLAUDE_API_KEY).',
+      );
+      return;
+    }
+
+    if (_mode == ScanMode.barcode) {
+      await _scanBarcodeBurst();
+      return;
+    }
+
     final cam = _camController;
     if (cam == null || !cam.value.isInitialized) return;
     setState(() => _processing = true);
 
     try {
       final photo = await cam.takePicture();
-      final text  = await _ocr.extractText(photo.path);
-      debugPrint('[OCR] Texto extraído: $text');
+      // Congela la foto tomada en pantalla — antes no había ninguna señal
+      // visual de que el obturador sí había capturado algo.
+      setState(() => _capturedPhotoPath = photo.path);
 
-      if (text.trim().isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'No se detectó texto. Mejora la iluminación y el enfoque.',
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        setState(() => _processing = false);
-        return;
+      if (_mode == ScanMode.visual) {
+        ref.read(scannerProvider.notifier).analyzeImage(photo.path);
+      } else {
+        await _analyzeOcrStill(photo.path);
       }
-      ref.read(scannerProvider.notifier).scanOcr(text);
     } catch (e) {
-      debugPrint('[OCR] Error capturando foto: $e');
-      setState(() => _processing = false);
+      debugPrint('[Scanner] Error capturando foto: $e');
+      setState(() { _processing = false; _capturedPhotoPath = null; });
     }
   }
 
-  Future<void> _saveNotFound(String scannedValue) async {
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.orange),
+    );
+  }
+
+  Future<void> _analyzeOcrStill(String imagePath) async {
+    final text = await _ocr.extractText(imagePath);
+    debugPrint('[OCR] Texto extraído: $text');
+
+    if (text.trim().isEmpty) {
+      _showSnack('No se detectó texto. Mejora la iluminación y el enfoque.');
+      setState(() { _processing = false; _capturedPhotoPath = null; });
+      return;
+    }
+    ref.read(scannerProvider.notifier).scanOcr(text);
+  }
+
+  // Al presionar el obturador en modo código de barras se arranca una
+  // ráfaga breve de detección en vivo (el motor de ML Kit vía mobile_scanner
+  // reintenta en varios frames y ajusta foco), en vez de analizar una sola
+  // foto estática — con una sola foto fallaba con la mayoría de códigos
+  // reales. La cámara normal se libera mientras dura la ráfaga para no
+  // competir por el hardware con mobile_scanner, y se recupera al terminar.
+  Future<void> _scanBarcodeBurst() async {
+    setState(() => _processing = true);
+
+    await _camController?.dispose();
+    _camController = null;
+
+    // autoStart (por defecto true) hace que la propia cámara arranque en
+    // cuanto el widget MobileScanner se monta — no se llama start() a mano
+    // aquí porque hacerlo antes de que el widget exista en el árbol no
+    // tenía efecto (la cámara nunca llegaba a activarse a tiempo).
+    final controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+    );
+
+    final completer = Completer<String?>();
+    final sub = controller.barcodes.listen((capture) {
+      final code = capture.barcodes.isNotEmpty
+          ? capture.barcodes.first.rawValue
+          : null;
+      if (code != null && code.isNotEmpty && !completer.isCompleted) {
+        completer.complete(code);
+      }
+    });
+
+    if (mounted) setState(() => _burstController = controller);
+
+    String? code;
+    try {
+      code = await completer.future.timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => null,
+      );
+    } catch (e) {
+      debugPrint('[Scanner] Error en ráfaga de código de barras: $e');
+    } finally {
+      await sub.cancel();
+      await controller.dispose();
+      if (mounted) setState(() => _burstController = null);
+    }
+
+    await _startCamera(); // recupera la cámara normal para el próximo intento
+
+    if (code == null || code.isEmpty) {
+      _showSnack(
+        'No se detectó ningún código de barras. Mantén el celular quieto '
+        'y el código centrado.',
+      );
+      setState(() => _processing = false);
+      return;
+    }
+    ref.read(scannerProvider.notifier).scanBarcode(code);
+  }
+
+  Future<void> _saveNotFound(ScanResult result) async {
     try {
       final entry = HistoryEntryModel(
         id:             DateTime.now().millisecondsSinceEpoch.toString(),
-        medicineName:   scannedValue,
+        medicineName:   result.scannedValue,
         sanitaryRecord: '—',
         status:         'no_encontrado',
-        method:         'ocr',
+        method:         result.method.name,
         createdAt:      DateTime.now(),
         confidence:     0.0,
       );
@@ -502,9 +641,11 @@ class _ShutterButton extends StatelessWidget {
   const _ShutterButton({
     required this.onPress,
     required this.isLoading,
+    this.icon = Icons.document_scanner_rounded,
   });
   final VoidCallback onPress;
   final bool         isLoading;
+  final IconData     icon;
 
   @override
   Widget build(BuildContext context) {
@@ -553,8 +694,8 @@ class _ShutterButton extends StatelessWidget {
                       color: Colors.white, strokeWidth: 2.5,
                     ),
                   )
-                : const Icon(
-                    Icons.document_scanner_rounded,
+                : Icon(
+                    icon,
                     color: Colors.white,
                     size: 30,
                   ),
