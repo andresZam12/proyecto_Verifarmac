@@ -5,9 +5,11 @@ import '../../domain/repositories/i_scanner_repository.dart';
 import '../datasources/claude_ai_datasource.dart';
 import '../datasources/ocr_datasource.dart';
 import '../datasources/open_food_facts_datasource.dart';
+import '../datasources/open_products_facts_datasource.dart';
 import '../datasources/upc_lookup_datasource.dart';
-import '../models/barcode_product_info.dart';
 import '../models/scan_result_model.dart';
+import '../utils/health_product_classifier.dart';
+import '../../domain/utils/scan_text_parser.dart';
 import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../../medicine_detail/data/models/medicine_model.dart';
 import '../../../medicine_detail/domain/entities/medicine.dart';
@@ -18,47 +20,33 @@ class ScannerRepositoryImpl implements IScannerRepository {
     required this.ocr,
     required this.claude,
     required this.openFoodFacts,
+    required this.openProductsFacts,
     required this.upcLookup,
   });
-  final InvimaApiDataSource       invima;
-  final OcrDataSource             ocr;
-  final ClaudeAiDataSource        claude;
-  final OpenFoodFactsDatasource   openFoodFacts;
-  final UpcLookupDataSource       upcLookup;
-
-  // Palabras que sugieren que un producto es un medicamento o producto
-  // natural con fines terapéuticos — lo único que VeriFarmac puede
-  // verificar contra INVIMA. Heurística de mejor esfuerzo: las bases de
-  // código de barras genéricas (Open Food Facts, UPCItemDB) no tienen una
-  // categoría "medicamento" estandarizada, así que se busca por palabras
-  // clave en el nombre y la categoría que sí reportan.
-  static const _healthKeywords = [
-    'medic', 'farmac', 'drug', 'pill', 'tablet', 'tableta', 'capsul',
-    'jarabe', 'syrup', 'suplement', 'supplement', 'vitamin', 'vitamina',
-    'salud', 'health', 'natural', 'herbal', 'fitoterap', 'analges',
-    'antibiot', 'antiinflamat', 'dolor', 'pain relief', 'pharma',
-  ];
-
-  bool _looksLikeHealthProduct(BarcodeProductInfo info) {
-    final text = '${info.name} ${info.category ?? ''}'.toLowerCase();
-    return _healthKeywords.any(text.contains);
-  }
+  final InvimaApiDataSource         invima;
+  final OcrDataSource               ocr;
+  final ClaudeAiDataSource          claude;
+  final OpenFoodFactsDatasource     openFoodFacts;
+  final OpenProductsFactsDatasource openProductsFacts;
+  final UpcLookupDataSource         upcLookup;
 
   @override
   Future<ScanResult> processBarcode(String barcode) async {
-    if (_isEanBarcode(barcode)) {
-      // Paso 1: buscar el producto — primero en Open Food Facts (sobre todo
-      // alimentos) y, si no aparece, en UPCItemDB como respaldo (cobertura
-      // general de consumo, tampoco específica de medicamentos: no existe
-      // una base pública gratuita que cruce código de barras ↔ INVIMA).
+    if (ScanTextParser.isEanBarcode(barcode)) {
+      // Paso 1: buscar el producto en tres bases gratuitas, en orden —
+      // Open Food Facts (alimentos), Open Products Facts (el resto del
+      // catálogo, misma organización) y UPCItemDB (retail general) como
+      // último respaldo. Ninguna es específica de medicamentos: no existe
+      // una base pública gratuita que cruce código de barras ↔ INVIMA.
       final info = await openFoodFacts.getProductInfo(barcode)
+          ?? await openProductsFacts.getProductInfo(barcode)
           ?? await upcLookup.getProductInfo(barcode);
 
       if (info != null) {
         // El producto existe en una base genérica pero no parece de salud
         // (ej. tecnología, aseo, alimentos sin más): se le avisa al usuario
         // en vez de intentar — y fallar — una búsqueda sin sentido en INVIMA.
-        if (!_looksLikeHealthProduct(info)) {
+        if (!HealthProductClassifier.looksLikeHealthProduct(info)) {
           return ScanResultModel(
             id:           const Uuid().v4(),
             scannedValue: barcode,
@@ -126,9 +114,9 @@ class ScannerRepositoryImpl implements IScannerRepository {
   Future<ScanResult> processOcr(String text) async {
     // Si el texto contiene un código INVIMA, busca por registro.
     // Si no, busca por nombre (palabras del empaque).
-    final invimaCode = _extractInvimaCode(text);
-    final expiryDate = _extractExpiryDate(text);
-    final expired    = _isExpired(expiryDate);
+    final invimaCode = ScanTextParser.extractInvimaCode(text);
+    final expiryDate = ScanTextParser.extractExpiryDate(text);
+    final expired    = ScanTextParser.isExpired(expiryDate);
     MedicineModel? medicine;
 
     if (invimaCode != null) {
@@ -166,14 +154,14 @@ class ScannerRepositoryImpl implements IScannerRepository {
     final isAuthentic  = analysis['isAuthentic'] as bool? ?? false;
     final confidence   = (analysis['confidence'] as num?)?.toDouble() ?? 0.0;
     final observation  = analysis['observations'] as String? ?? '';
-    final expiryDate   = _parseExpiryString(analysis['expiryDate'] as String?);
-    final expired      = _isExpired(expiryDate);
+    final expiryDate   = ScanTextParser.parseExpiryString(analysis['expiryDate'] as String?);
+    final expired      = ScanTextParser.isExpired(expiryDate);
     final registryText = analysis['registrySanitario'] as String?;
 
     // La IA no decide vigencia por sí sola: si logró leer un registro
     // sanitario en el empaque, se contrasta contra INVIMA igual que en OCR.
     MedicineModel? medicine;
-    final code = registryText != null ? _extractInvimaCode(registryText) : null;
+    final code = registryText != null ? ScanTextParser.extractInvimaCode(registryText) : null;
     if (code != null) {
       medicine = await invima.findByRegistry(code);
     }
@@ -219,57 +207,4 @@ class ScannerRepositoryImpl implements IScannerRepository {
       error:          medicine == null ? 'No information found in INVIMA' : null,
     );
   }
-
-  // Extrae un código INVIMA del texto OCR del empaque.
-  // Acepta espacios alrededor del guion: "2008M- 007952" o "2008M-007952".
-  String? _extractInvimaCode(String text) {
-    final regex = RegExp(
-      r'INVIMA\s*\d{4}[A-Z]\s*-?\s*\d{6,7}',
-      caseSensitive: false,
-    );
-    return regex.firstMatch(text)?.group(0);
-  }
-
-  // EAN/UPC barcodes are purely numeric (8–14 digits)
-  bool _isEanBarcode(String value) =>
-      RegExp(r'^\d{8,14}$').hasMatch(value.trim());
-
-  // Extrae la fecha de vencimiento del texto OCR del empaque.
-  // Acepta formatos: MM/YYYY, MM/YY y espacios alrededor del separador.
-  // Ej: "VENCE: 07/2020", "EXP. 07 / 2020", "F.V.: 07/20"
-  static final _expiryPattern = RegExp(
-    r'(?:vence|vencimiento|f\.?\s*venc\.?|fv|exp(?:iry|ires)?)'
-    r'\s*[:\.]?\s*'
-    r'(\d{1,2})\s*[/\-\.]\s*(\d{2,4})',
-    caseSensitive: false,
-  );
-
-  DateTime? _extractExpiryDate(String text) {
-    final match = _expiryPattern.firstMatch(text);
-    if (match == null) return null;
-    return _parseMonthYear(match.group(1)!, match.group(2)!);
-  }
-
-  DateTime? _parseExpiryString(String? raw) {
-    if (raw == null || raw.isEmpty || raw == 'null') return null;
-    final parts = raw.trim().split(RegExp(r'\s*[/\-\.]\s*'));
-    if (parts.length < 2) return null;
-    return _parseMonthYear(parts[0], parts[1]);
-  }
-
-  DateTime? _parseMonthYear(String monthStr, String yearStr) {
-    try {
-      final month = int.parse(monthStr.trim());
-      var   year  = int.parse(yearStr.trim());
-      if (year < 100) year += 2000;
-      if (month < 1 || month > 12) return null;
-      // Vence el último día de ese mes
-      return DateTime(year, month + 1, 1).subtract(const Duration(days: 1));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool _isExpired(DateTime? date) =>
-      date != null && date.isBefore(DateTime.now());
 }

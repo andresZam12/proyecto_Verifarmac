@@ -3,6 +3,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../data/datasources/claude_ai_datasource.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../../data/datasources/open_food_facts_datasource.dart';
+import '../../data/datasources/open_products_facts_datasource.dart';
 import '../../data/datasources/upc_lookup_datasource.dart';
 import '../../../medicine_detail/data/datasources/invima_api_datasource.dart';
 import '../../data/repositories/scanner_repository_impl.dart';
@@ -91,8 +92,9 @@ final _repositoryProvider = Provider(
     invima:         InvimaApiDataSource(),
     ocr:            OcrDataSource(),
     claude:         ClaudeAiDataSource(ref.read(_dioProvider)),
-    openFoodFacts:  OpenFoodFactsDatasource(),
-    upcLookup:      UpcLookupDataSource(),
+    openFoodFacts:     OpenFoodFactsDatasource(),
+    openProductsFacts: OpenProductsFactsDatasource(),
+    upcLookup:         UpcLookupDataSource(),
   ),
 );
 

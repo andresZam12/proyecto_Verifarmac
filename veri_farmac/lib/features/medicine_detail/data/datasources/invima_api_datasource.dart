@@ -17,6 +17,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/medicine_model.dart';
+import '../utils/invima_status_parser.dart';
 
 class InvimaApiDataSource {
   InvimaApiDataSource() {
@@ -40,14 +41,14 @@ class InvimaApiDataSource {
 
     // Intento 1: busca en el campo registrosanitario con guion
     var result = await _queryWhere(
-      "upper(registrosanitario) like upper('%${_escape(clean)}%')",
+      "upper(registrosanitario) like upper('%${InvimaStatusParser.escape(clean)}%')",
     );
     if (result != null) return result;
 
     // Intento 2: sin guion
     if (withoutDash != clean) {
       result = await _queryWhere(
-        "upper(registrosanitario) like upper('%${_escape(withoutDash)}%')",
+        "upper(registrosanitario) like upper('%${InvimaStatusParser.escape(withoutDash)}%')",
       );
       if (result != null) return result;
     }
@@ -70,7 +71,7 @@ class InvimaApiDataSource {
 
     // Intento 2: LIKE en campo producto
     return _queryWhere(
-      "upper(producto) like upper('%${_escape(name)}%')",
+      "upper(producto) like upper('%${InvimaStatusParser.escape(name)}%')",
     );
   }
 
@@ -91,7 +92,7 @@ class InvimaApiDataSource {
 
       // Respaldo: LIKE en nombre
       final response2 = await _dio.get(_apiUrl, queryParameters: {
-        r'$where': "upper(producto) like upper('%${_escape(query)}%')",
+        r'$where': "upper(producto) like upper('%${InvimaStatusParser.escape(query)}%')",
         r'$limit': '$_limit',
       });
       final list2 = response2.data as List<dynamic>;
@@ -160,21 +161,11 @@ class InvimaApiDataSource {
         'ingrediente':   json['principioactivo'],
         'concentracion': conc,
         'forma':         json['formafarmaceutica'],
-        'estado':        _normalizeStatus(rawStatus),
+        'estado':        InvimaStatusParser.normalizeStatus(rawStatus),
       });
     } catch (e) {
       debugPrint('[INVIMA] _fromSocrata error: $e');
       return null;
     }
   }
-
-  String _normalizeStatus(String raw) {
-    if (raw.contains('vigente'))                               return 'vigente';
-    if (raw.contains('venc'))                                  return 'vencido';
-    if (raw.contains('invalid') || raw.contains('suspendido')) return 'invalido';
-    if (raw.contains('sospech'))                               return 'sospechoso';
-    return 'desconocido';
-  }
-
-  String _escape(String value) => value.replaceAll("'", "''");
 }

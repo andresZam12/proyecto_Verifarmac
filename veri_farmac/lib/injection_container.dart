@@ -13,6 +13,7 @@ import 'features/auth/domain/usecases/sign_out_usecase.dart';
 import 'features/scanner/data/datasources/claude_ai_datasource.dart';
 import 'features/scanner/data/datasources/ocr_datasource.dart';
 import 'features/scanner/data/datasources/open_food_facts_datasource.dart';
+import 'features/scanner/data/datasources/open_products_facts_datasource.dart';
 import 'features/scanner/data/datasources/upc_lookup_datasource.dart';
 import 'features/scanner/data/repositories/scanner_repository_impl.dart';
 import 'features/scanner/domain/repositories/i_scanner_repository.dart';
@@ -55,14 +56,16 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton(() => OcrDataSource());
   sl.registerLazySingleton(() => ClaudeAiDataSource(sl<DioClient>().dio));
   sl.registerLazySingleton(() => OpenFoodFactsDatasource());
+  sl.registerLazySingleton(() => OpenProductsFactsDatasource());
   sl.registerLazySingleton(() => UpcLookupDataSource());
   sl.registerLazySingleton<IScannerRepository>(
     () => ScannerRepositoryImpl(
-      invima:        sl<InvimaApiDataSource>(),
-      ocr:           sl<OcrDataSource>(),
-      claude:        sl<ClaudeAiDataSource>(),
-      openFoodFacts: sl<OpenFoodFactsDatasource>(),
-      upcLookup:     sl<UpcLookupDataSource>(),
+      invima:            sl<InvimaApiDataSource>(),
+      ocr:               sl<OcrDataSource>(),
+      claude:            sl<ClaudeAiDataSource>(),
+      openFoodFacts:     sl<OpenFoodFactsDatasource>(),
+      openProductsFacts: sl<OpenProductsFactsDatasource>(),
+      upcLookup:         sl<UpcLookupDataSource>(),
     ),
   );
 

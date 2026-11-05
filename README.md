@@ -85,7 +85,8 @@ VeriPharmac es una aplicación móvil Android que permite verificar si un medica
 | **INVIMA / Socrata** | Registro sanitario de medicamentos | Público, sin límite |
 | **OpenStreetMap / Nominatim** | Tiles del mapa + búsqueda de farmacias | Público, sin API key |
 | **Open Food Facts** | Nombre de producto por código de barras EAN (mayormente alimentos) | Público, sin API key |
-| **UPCItemDB** | Respaldo de Open Food Facts para códigos de barras generales | Trial gratuito, sin API key |
+| **Open Products Facts** | Respaldo de Open Food Facts para productos no alimenticios (misma organización) | Público, sin API key |
+| **UPCItemDB** | Último respaldo para códigos de barras generales | Trial gratuito, sin API key |
 | **Claude (Anthropic)** | Análisis visual de empaques deteriorados | De pago, requiere `CLAUDE_API_KEY` propia |
 
 ---
@@ -105,14 +106,23 @@ GET https://world.openfoodfacts.org/api/v0/product/{barcode}.json
 ```
 Obtiene el nombre del producto a partir de un código EAN/UPC.
 
-### UPCItemDB — Respaldo de código de barras
+### Open Products Facts — Código de barras (no alimentos)
+```
+GET https://world.openproductsfacts.org/api/v0/product/{barcode}.json
+```
+Misma organización y formato que Open Food Facts, pero para el resto
+del catálogo (aseo, electrónica, papelería, etc.). Se consulta cuando
+Open Food Facts no tiene el producto.
+
+### UPCItemDB — Último respaldo de código de barras
 ```
 GET https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}
 ```
-Se consulta cuando Open Food Facts no tiene el producto. No existe
-ninguna base pública gratuita que cruce código de barras con registro
-INVIMA directamente — por eso, si el producto encontrado no parece un
-medicamento (por nombre/categoría), la app avisa que está fuera de su
+Se consulta cuando ninguna de las dos bases anteriores tiene el
+producto. No existe ninguna base pública gratuita que cruce código de
+barras con registro INVIMA directamente — por eso, si el producto
+encontrado no parece un medicamento (por nombre/categoría), la app
+avisa que está fuera de su
 alcance en vez de intentar una búsqueda sin sentido en INVIMA.
 
 ### Nominatim — Farmacias cercanas
