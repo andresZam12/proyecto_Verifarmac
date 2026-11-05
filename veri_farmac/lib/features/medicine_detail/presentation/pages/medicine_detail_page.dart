@@ -36,7 +36,9 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
     // El análisis visual con IA no siempre deja un registro INVIMA legible
     // para consultar — en ese caso se usa directamente el veredicto de la IA.
     if (result.method == ScanMethod.visual && result.sanitaryRecord == null) {
-      ref.read(medicineProvider.notifier).loadFromVisualAnalysis(result);
+      Future.microtask(
+        () => ref.read(medicineProvider.notifier).loadFromVisualAnalysis(result),
+      );
     } else {
       Future.microtask(
         () => ref.read(medicineProvider.notifier).loadByBarcode(_medicineId),
