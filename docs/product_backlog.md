@@ -1,6 +1,6 @@
 # Backlog y plan de trabajo — VeriFarmac
 
-Este documento traduce el Capítulo 3 (Metodología) y el Capítulo 4 (Requisitos) del trabajo de grado *"Sistema móvil inteligente para la verificación de la autenticidad y vigencia del registro sanitario de medicamentos convencionales y productos naturales en Colombia"* (CTG_29Oct_Zambrano_Moran) en un Product Backlog y un Sprint Backlog verificables, y deja lista la estructura para poblar el tablero de GitHub Projects (`users/DeividJulian/projects/2`) en cuanto se disponga de acceso de colaborador a ese proyecto.
+Este documento traduce el Capítulo 3 (Metodología) y el Capítulo 4 (Requisitos) del trabajo de grado *"Sistema móvil inteligente para la verificación de la autenticidad y vigencia del registro sanitario de medicamentos convencionales y productos naturales en Colombia"* (CTG_29Oct_Zambrano_Moran) en un Product Backlog y un Sprint Backlog verificables, usados para poblar el tablero de GitHub Projects en [`users/andresZam12/projects/2`](https://github.com/users/andresZam12/projects/2/views/1).
 
 Fuente de la metodología: Scrum adaptado, 5 fases, 24 sprints de dos semanas, periodo febrero 2026 – julio 2027 (78 semanas, 72 efectivas). Ver sección 3.3 y Tabla 9 del documento.
 
@@ -85,14 +85,22 @@ Cada historia de usuario (HU) referencia su requisito (RF/RNF) y caso de uso (CU
 
 ## 3. Sprint Backlog — Fase 3 (sprints 7 a 18, agosto 2026 – febrero 2027)
 
+Este backlog ya está poblado como tablero real en GitHub Projects: [users/andresZam12/projects/2](https://github.com/users/andresZam12/projects/2/views/1), con 27 issues en `andresZam12/proyecto_Verifarmac` (uno por historia), 24 milestones (Sprint 1 a Sprint 24, con fecha de vencimiento según la Tabla 9 del documento) y los campos Status, Priority y Labels configurados por historia.
+
 | Sprint | Fechas | Objetivo | Historias | Estado |
 |---|---|---|---|---|
-| 7–9 | ago–sep 2026 | Autenticación, escaneo por código de barras, OCR base | HU-01 a HU-08 | Hecho |
-| 10–11 | sep–oct 2026 | Consulta INVIMA (número y nombre), análisis visual con IA | HU-10, HU-11, HU-13, HU-14 | Hecho |
-| 12–13 | oct–nov 2026 | Resultados por categoría, historial, respaldo de código de barras | HU-06, HU-15, HU-17, HU-19, HU-20 | Hecho |
-| **14 (actual)** | **07–20 nov 2026** | Cerrar brechas: cobertura de pruebas, corrección manual OCR, aviso de alcance visible, enlace INVIMA | HU-09, HU-16, HU-18, HU-24 | **En progreso** |
-| 15–16 | nov–dic 2026 | Consentimiento de datos (RNF004), límite de uso de IA (RNF011), auditoría de accesibilidad (RNF006) | HU-25, HU-26, HU-27 | Por hacer |
-| 17–18 | dic 2026–ene 2027 | Resolver divergencia de sincronización INVIMA (HU-12) o actualizar el documento para reflejar consulta en vivo; cierre de desarrollo de Fase 3 | HU-12 | Por hacer |
+| 7 | 01–14 ago 2026 | Autenticación | HU-01, HU-02, HU-03 | Hecho |
+| 8 | 15–28 ago 2026 | Código de barras + seguridad de credenciales | HU-04, HU-05, HU-06, HU-22 | Hecho |
+| 9 | 29 ago–11 sep 2026 | OCR base, procesamiento on-device | HU-07, HU-08, HU-21 | Hecho |
+| 10 | 12–25 sep 2026 | Consulta INVIMA por número y por nombre | HU-10, HU-11 | Hecho |
+| 11 | 26 sep–9 oct 2026 | Análisis visual con IA y cruce contra INVIMA | HU-13, HU-14 | Hecho |
+| 12 | 10–23 oct 2026 | Resultados por categoría y diferenciación de producto | HU-15, HU-17 | Hecho |
+| 13 | 24 oct–6 nov 2026 | Historial, sincronización y modo sin conexión | HU-19, HU-20, HU-23 | Hecho |
+| **14 (actual)** | **07–20 nov 2026** | Cerrar brechas: corrección manual OCR, aviso de alcance, enlace INVIMA, cobertura de pruebas | HU-09 (Sprint Backlog), HU-16 (In review), HU-18 (Sprint Backlog), HU-24 (In progress) | **En progreso** |
+| 15 | 21 nov–4 dic 2026 | Consentimiento de datos personales (RNF004) | HU-25 | Backlog |
+| 16 | 05–18 dic 2026 | Límite de uso de IA (RNF011) | HU-26 | Backlog |
+| 17 | 19 dic 2026–1 ene 2027 | Auditoría de accesibilidad WCAG 2.1 AA (RNF006) | HU-27 | Backlog |
+| 18 | 02–15 ene 2027 | Resolver divergencia de sincronización INVIMA (HU-12) o actualizar el documento; cierre de desarrollo de Fase 3 | HU-12 | Backlog |
 
 ## 4. Divergencias documento ↔ código (para decidir con el director de tesis)
 
@@ -100,15 +108,14 @@ Cada historia de usuario (HU) referencia su requisito (RF/RNF) y caso de uso (CU
 2. **RF001/RF002.** El sistema añade inicio de sesión con Google, no mencionado en el documento. Se recomienda documentarlo como ampliación en la sección 4.1.1.
 3. **Alcance adicional no documentado.** Existe un módulo de mapa de farmacias (`features/map`) sin caso de uso ni requisito asociado en el Capítulo 4. Debe decidirse si se documenta como ampliación de alcance o se excluye de la entrega académica.
 
-## 5. Estructura para poblar GitHub Projects (pendiente de acceso)
+## 5. Tablero GitHub Projects (poblado)
 
-El tablero vive en una cuenta distinta (`DeividJulian`) a la del repositorio de código (`andresZam12/proyecto_Verifarmac`). El acceso a un repositorio **no** otorga acceso a un Project de GitHub (Projects v2): es necesario que el propietario añada al colaborador explícitamente desde el propio proyecto (`Project → ⋯ → Settings → Manage access → Invite collaborator`, rol *Write*).
+El tablero se migró a la cuenta `andresZam12` ([users/andresZam12/projects/2](https://github.com/users/andresZam12/projects/2/views/1), privado, 2 colaboradores: `andresZam12` y `DeividJulian`) y se pobló por completo el 2026-11-07 a partir de este documento, usando `gh` CLI:
 
-Una vez concedido el acceso, cada fila de las tablas anteriores se traduce en un issue/tarjeta con:
+- **27 issues** (HU-01 a HU-27) en `andresZam12/proyecto_Verifarmac`, cada uno con historia de usuario, criterios de aceptación, RF/RNF/CU relacionado y evidencia en el código, tal como aparecen en las tablas de la sección 2.
+- **24 milestones** (Sprint 1 a Sprint 24) con fecha de vencimiento calculada a partir de la Tabla 9 del documento (inicio de Fase 2: 01-may-2026; Fase 3: 01-ago-2026; Fase 4: 01-mar-2027).
+- **Labels de fase** (`fase-1-planificacion` … `fase-5-cierre`); todas las historias actuales quedaron en `fase-3-desarrollo`.
+- **Campo Status** (nativo del tablero: Backlog, Sprint Backlog, In progress, In review, Done) y **campo Priority** (P0/P1/P2) asignados por historia según la sección 2.
+- **Assignees:** `andresZam12` y `DeividJulian` en las 27 historias, conforme a la sección 3.4 del documento (Development Team compartido).
 
-- **Columna** (estado del flujo): Backlog, To do, In progress, In review, Done — mapeando "Hecho" → Done, "En progreso" → In progress, "Por hacer"/"Backlog" → To do/Backlog, "Por verificar"/"Divergencia" → In review.
-- **Campos personalizados:** Fase (1–5), Sprint, Prioridad (Alta/Media/Baja), RF/RNF/CU relacionado.
-- **Título del issue:** `HU-XX — <historia corta>`.
-- **Descripción del issue:** historia de usuario + criterios de aceptación + enlace al requisito en el documento.
-
-Este documento es la fuente única para esa migración; en cuanto se confirme el acceso de colaborador se puede automatizar la creación de issues y tarjetas vía `gh` CLI o la API GraphQL de Projects v2.
+Estado resultante: 18 historias en Done, 2 en Sprint Backlog, 1 en In review, 1 en In progress y 5 en Backlog — coherente con que el proyecto está en el Sprint 14 de 24.
