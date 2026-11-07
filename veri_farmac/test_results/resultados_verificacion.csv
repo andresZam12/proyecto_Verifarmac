@@ -1,0 +1,3 @@
+fecha,medicamento,metodo,estado_real,estado_predicho,coincide,notas
+2026-11-04,Dihidrocodeína Bitartrato Jarabe,visual,vencido,vencido,si,"IA leyo 07/2020 a mano en rojo; registro INVIMA coincidio exacto"
+2026-11-04,Medicamento con codigo alterado,ocr,invalido,no_encontrado,si,"codigo adulterado a mano; app correctamente no encontro match (antes del fix daba falso positivo)"
