@@ -1,3 +1,4 @@
+
 // Constantes de texto de la aplicación.
 // Todas las cadenas hardcodeadas de la UI deben declararse aquí.
 // El código llama a la constante — nunca repite el string directamente.

@@ -75,6 +75,12 @@ final _repositoryProvider = Provider(
   (ref) => MedicineRepositoryImpl(ref.read(_datasourceProvider)),
 );
 
+// Fecha de corte del dataset de INVIMA — exigida por la Ley 1712/2014 y la
+// licencia CC BY-SA 4.0 de datos.gov.co al reutilizar datos abiertos.
+final invimaLastUpdatedProvider = FutureProvider<DateTime?>(
+  (ref) => ref.read(_datasourceProvider).getDatasetLastUpdated(),
+);
+
 final medicineProvider =
     StateNotifierProvider<MedicineNotifier, MedicineState>((ref) {
   final repo = ref.read(_repositoryProvider);

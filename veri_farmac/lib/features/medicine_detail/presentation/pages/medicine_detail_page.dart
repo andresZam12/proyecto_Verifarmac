@@ -234,14 +234,15 @@ class _MedicineDetailPageState extends ConsumerState<MedicineDetailPage> {
   }
 }
 
-class _Detail extends StatelessWidget {
+class _Detail extends ConsumerWidget {
   const _Detail({required this.medicine, required this.l10n, this.aiNote});
   final Medicine         medicine;
   final AppLocalizations l10n;
   final String?          aiNote;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lastUpdated = ref.watch(invimaLastUpdatedProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -361,10 +362,45 @@ class _Detail extends StatelessWidget {
             _InfoRow(label: l10n.pharmaceuticalForm,
                 value: medicine.pharmaceuticalForm!),
         ]),
+
+        // Fuente y fecha de corte de los datos — exigido por la Ley 1712/2014
+        // y la licencia CC BY-SA 4.0 de datos.gov.co al reutilizar datos
+        // abiertos. Este dataset se publica por lotes periódicos, no es un
+        // espejo en vivo del sistema interno de INVIMA.
+        Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.verified_outlined,
+                  size: 13, color: context.textSub.withValues(alpha: 0.6)),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  lastUpdated.when(
+                    data: (date) => date != null
+                        ? 'Fuente: INVIMA — datos.gov.co · corte ${_formatDate(date)}'
+                        : 'Fuente: INVIMA — datos.gov.co',
+                    loading: () => 'Fuente: INVIMA — datos.gov.co',
+                    error: (_, _) => 'Fuente: INVIMA — datos.gov.co',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.textSub.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ]),
     );
   }
 }
+
+String _formatDate(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
 class _InfoSection extends StatelessWidget {
   const _InfoSection({required this.title, required this.children});

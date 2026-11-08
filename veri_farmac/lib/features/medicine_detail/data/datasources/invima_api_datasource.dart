@@ -31,8 +31,36 @@ class InvimaApiDataSource {
   late final Dio _dio;
 
   // URL completa para evitar ambigüedad con baseUrl
-  static const _apiUrl = 'https://www.datos.gov.co/resource/i7cb-raxc.json';
-  static const _limit  = 5;
+  static const _apiUrl      = 'https://www.datos.gov.co/resource/i7cb-raxc.json';
+  static const _metadataUrl = 'https://www.datos.gov.co/api/views/i7cb-raxc.json';
+  static const _limit       = 5;
+
+  // La Ley 1712 de 2014 y la licencia CC BY-SA 4.0 de datos.gov.co exigen
+  // mostrar la fuente y la fecha de corte de los datos abiertos que se
+  // reutilizan. Este dataset se publica por lotes periódicos — no es un
+  // espejo en vivo del sistema interno de INVIMA — así que esta fecha
+  // puede tener semanas de rezago frente a cambios reales en el registro.
+  // Se guarda en caché en memoria: no cambia seguido y no vale la pena
+  // consultarla en cada pantalla de resultado.
+  DateTime? _cachedLastUpdated;
+
+  Future<DateTime?> getDatasetLastUpdated() async {
+    if (_cachedLastUpdated != null) return _cachedLastUpdated;
+    try {
+      final response = await _dio.get(_metadataUrl);
+      final data = response.data as Map<String, dynamic>;
+      final epochSeconds = data['rowsUpdatedAt'] as int?;
+      if (epochSeconds == null) return null;
+      _cachedLastUpdated = DateTime.fromMillisecondsSinceEpoch(
+        epochSeconds * 1000,
+        isUtc: true,
+      ).toLocal();
+      return _cachedLastUpdated;
+    } catch (e) {
+      debugPrint('[INVIMA] Error obteniendo fecha de actualización del dataset: $e');
+      return null;
+    }
+  }
 
   // Busca por registro sanitario (ej: "2008M-0007952" o "INVIMA 2008M-0007952").
   Future<MedicineModel?> findByRegistry(String registry) async {

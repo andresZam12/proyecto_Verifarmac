@@ -412,11 +412,24 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
     } catch (_) {}
   }
 
-  void _toggleTorch() {
-    _camController?.setFlashMode(
-      _torchEnabled ? FlashMode.off : FlashMode.torch,
-    );
-    setState(() => _torchEnabled = !_torchEnabled);
+  // FlashMode.torch mantiene la linterna encendida de forma continua
+  // (no solo un destello al disparar) — así queda encendida mientras se
+  // encuadra y durante la captura de la foto. Antes no se esperaba el
+  // resultado de setFlashMode() ni se manejaban errores, así que si el
+  // dispositivo no tenía flash o la llamada fallaba, el ícono igual
+  // cambiaba a "encendido" sin que la luz se activara de verdad.
+  Future<void> _toggleTorch() async {
+    final cam = _camController;
+    if (cam == null || !cam.value.isInitialized) return;
+
+    final turningOn = !_torchEnabled;
+    try {
+      await cam.setFlashMode(turningOn ? FlashMode.torch : FlashMode.off);
+      if (mounted) setState(() => _torchEnabled = turningOn);
+    } catch (e) {
+      debugPrint('[Scanner] Error al activar el flash: $e');
+      _showSnack('Este dispositivo no tiene flash o no se pudo activar.');
+    }
   }
 }
 
