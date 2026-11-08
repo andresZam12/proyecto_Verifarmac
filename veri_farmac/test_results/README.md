@@ -35,10 +35,19 @@ que la matriz tenga sentido estadístico.
 
 | Clase           | Filas registradas | Meta |
 |------------------|:---:|:---:|
-| `vigente`        | 0 | 4-5 |
-| `vencido`        | 1 | 4-5 |
-| `invalido`       | 1 | 4-5 |
-| `sospechoso`     | 0 | 4-5 |
-| `no_encontrado`  | 0 | 4-5 |
+| `vigente`        | 17 | 4-5 ✅ |
+| `vencido`        | 4 | 4-5 ✅ |
+| `invalido`       | 4 | 4-5 ✅ |
+| `sospechoso`     | 0 | 4-5 ⚠️ |
+| `no_encontrado`  | 0 | 4-5 ⚠️ |
 
-*(Esta tabla se actualiza a mano cada vez que se agregan filas al CSV.)*
+`sospechoso` y `no_encontrado` solo aparecen hasta ahora como **estado_predicho**
+(la app respondiendo "no encontrado" o "sospechoso"), nunca como la verdad real
+de un producto probado — no hemos tenido en mano un producto cuyo estado real
+conocido sea literalmente "sospechoso" o "no encontrado". Queda como limitación
+reconocida de la muestra piloto (ver Figura 18 en el documento), no como dato
+inventado para rellenar la tabla.
+
+*(Esta tabla se actualiza a mano cada vez que se agregan filas al CSV. Última
+actualización: 25 filas totales, 8 productos adicionales del lote 2026-09-25
+a 2026-11-07, código de barras reportado aparte por limitación de datos externa.)*
