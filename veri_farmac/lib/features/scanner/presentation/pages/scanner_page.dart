@@ -203,13 +203,20 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
                 ),
               ),
               const Spacer(),
-              _IconCircleButton(
-                icon:   _torchEnabled
-                    ? Icons.flash_on_rounded
-                    : Icons.flash_off_rounded,
-                onTap:  _toggleTorch,
-                active: _torchEnabled,
-              ),
+              Row(children: [
+                _IconCircleButton(
+                  icon:  Icons.keyboard_alt_outlined,
+                  onTap: _showManualEntryDialog,
+                ),
+                const SizedBox(width: 8),
+                _IconCircleButton(
+                  icon:   _torchEnabled
+                      ? Icons.flash_on_rounded
+                      : Icons.flash_off_rounded,
+                  onTap:  _toggleTorch,
+                  active: _torchEnabled,
+                ),
+              ]),
             ]),
           ),
         ),
@@ -430,6 +437,65 @@ class _ScannerPageState extends ConsumerState<ScannerPage>
       debugPrint('[Scanner] Error al activar el flash: $e');
       _showSnack('Este dispositivo no tiene flash o no se pudo activar.');
     }
+  }
+
+  // Respaldo manual: no todas las cámaras/dispositivos Android enfocan o
+  // leen bien un código o texto impreso. Deja escribir directamente el
+  // código de barras EAN o el número de registro INVIMA — processBarcode()
+  // ya distingue entre los dos formatos, así que un mismo flujo sirve
+  // para ambos sin lógica adicional.
+  Future<void> _showManualEntryDialog() async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Ingresar código manualmente',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Útil si la cámara no logra leer el código de barras o el '
+              'registro INVIMA del empaque. Escribe el código EAN/UPC o el '
+              'número de registro (ej. "INVIMA 2008M-0007952").',
+              style: TextStyle(fontSize: 13.5),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'Código de barras o registro INVIMA',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => Navigator.pop(ctx, v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            style: FilledButton.styleFrom(backgroundColor: _kPrimary),
+            child: const Text('Buscar'),
+          ),
+        ],
+      ),
+    );
+
+    final code = value?.trim();
+    if (code == null || code.isEmpty || _processing) return;
+
+    setState(() => _processing = true);
+    ref.read(scannerProvider.notifier).scanBarcode(code);
   }
 }
 
