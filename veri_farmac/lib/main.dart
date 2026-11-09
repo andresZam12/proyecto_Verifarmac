@@ -1,6 +1,5 @@
 // Punto de entrada de la aplicación.
 import 'package:flutter/material.dart';
-import 'injection_container.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,8 +20,6 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzbXJxb3ZreW1qdHhib3liZ3B4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MTIyOTksImV4cCI6MjA4OTk4ODI5OX0.ODXyHcF4Vo98yYQ_swZOqVrk-W-gOy1680QNg9fRARE',
     authOptions: const FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
   );
-
-  await setupDependencies();
 
   // Carga las preferencias guardadas (tema e idioma)
   final prefs = await SharedPreferences.getInstance();
