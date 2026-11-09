@@ -1,6 +1,4 @@
 // Entidad de usuario — Dart puro, sin dependencias externas.
-
-// Entidad de usuario — Dart puro, sin dependencias externas.
 // Representa al usuario autenticado en toda la app.
 class AppUser {
   const AppUser({
