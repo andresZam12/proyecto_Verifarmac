@@ -1,13 +1,14 @@
 <div align="center">
 
-# 💊 VeriPharmac
+# 💊 VeriFarmac
 
 **Verificador de medicamentos colombianos en tiempo real**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.11%2B-0175C2?logo=dart)](https://dart.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3ECF8E?logo=supabase)](https://supabase.com)
-[![Android](https://img.shields.io/badge/Android-5.0%2B-3DDC84?logo=android)](https://android.com)
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android)](https://android.com)
+[![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)](veri_farmac/test)
 
 [📥 Descargar APK v1.0.0](https://github.com/andresZam12/proyecto_Verifarmac/releases/download/v1.0.0/app-release.apk)
 
@@ -15,9 +16,9 @@
 
 ---
 
-## ¿Qué es VeriPharmac?
+## ¿Qué es VeriFarmac?
 
-VeriPharmac es una aplicación móvil Android que permite verificar si un medicamento colombiano está legalmente autorizado por el INVIMA, detectar si su lote está físicamente vencido y encontrar farmacias o clínicas cercanas — todo desde la cámara del celular.
+VeriFarmac es una aplicación móvil Android que permite verificar si un medicamento o producto natural colombiano tiene registro sanitario vigente ante el INVIMA, detectar si está vencido o si la información del empaque fue alterada, y encontrar farmacias o clínicas cercanas — todo desde la cámara del celular. Es el prototipo del trabajo de grado homónimo (Universidad Cooperativa de Colombia, Campus Pasto).
 
 ---
 
@@ -29,9 +30,9 @@ VeriPharmac es una aplicación móvil Android que permite verificar si un medica
    ```
 2. En tu Android ve a **Ajustes → Seguridad → Fuentes desconocidas** y actívalo
 3. Abre el archivo `.apk` descargado y sigue los pasos
-4. Inicia sesión con tu cuenta de Google
+4. Crea una cuenta con correo y contraseña, o inicia sesión con Google
 
-> **Requisitos mínimos:** Android 5.0 (API 21) · Cámara · Ubicación · Internet
+> **Requisitos mínimos:** Android 8.0 (API 26) · Cámara · Ubicación · Internet
 
 ---
 
@@ -44,6 +45,7 @@ VeriPharmac es una aplicación móvil Android que permite verificar si un medica
 | ✨ Análisis visual con IA | Claude interpreta empaques deteriorados/borrosos y extrae el registro cuando el OCR no alcanza (requiere `CLAUDE_API_KEY`, ver abajo) |
 | ✅ Verificación INVIMA | Consulta en tiempo real si el registro está vigente, vencido o suspendido |
 | ⚠️ Detección de vencimiento | Detecta la fecha "Vence: MM/YYYY" del empaque y alerta si el lote expiró |
+| ⌨️ Entrada manual | Respaldo para escribir el código EAN o el número de registro INVIMA cuando la cámara no logra leerlo |
 | 🗺️ Mapa de farmacias | Muestra clínicas y farmacias cercanas usando OpenStreetMap |
 | 📊 Dashboard | Gráfico de torta con historial de escaneos por estado |
 | 🕒 Historial | Registro local de todas las verificaciones, sincronizado con Supabase si hay sesión activa |
@@ -81,7 +83,7 @@ VeriPharmac es una aplicación móvil Android que permite verificar si un medica
 
 | Servicio | Uso | Plan |
 |---|---|---|
-| **Supabase** | Autenticación Google OAuth + base de datos PostgreSQL | Free tier |
+| **Supabase** | Autenticación (Google OAuth o correo/contraseña) + base de datos PostgreSQL | Free tier |
 | **INVIMA / Socrata** | Registro sanitario de medicamentos | Público, sin límite |
 | **OpenStreetMap / Nominatim** | Tiles del mapa + búsqueda de farmacias | Público, sin API key |
 | **Open Food Facts** | Nombre de producto por código de barras EAN (mayormente alimentos) | Público, sin API key |
@@ -172,27 +174,40 @@ empaque, pero la decisión de vigencia siempre la da el dato oficial.
 | HTTP | Dio | 5.7.0 |
 | Mapas | flutter_map + latlong2 | 8.3.0 |
 | Gráficas | fl_chart | 0.69.0 |
-| IA visual | Anthropic Claude API | claude-opus-4-5 |
+| IA visual | Anthropic Claude API | claude-sonnet-5 |
 
 ---
 
 ## 🏛️ Arquitectura
 
-Clean Architecture por feature. Cada módulo en `lib/features/<feature>/` tiene tres capas:
+Clean Architecture por feature. Cada módulo en `lib/features/<feature>/` tiene tres capas (domain / data / presentation). La inyección de dependencias es Riverpod puro — cada provider construye sus propios repositorios y datasources; no hay un service locator aparte.
 
 ```
 lib/
 ├── core/              # Router, providers globales, utilidades
 ├── features/
-│   ├── auth/          # Login con Google (Supabase)
+│   ├── auth/          # Login con Google o correo/contraseña (Supabase)
 │   ├── dashboard/     # Estadísticas y accesos rápidos
-│   ├── scanner/       # OCR + lógica de verificación
+│   ├── scanner/       # Código de barras + OCR + IA visual
 │   ├── medicine_detail/  # Detalle del medicamento + INVIMA
-│   ├── history/       # Historial local de escaneos
-│   ├── map/           # Mapa de farmacias
+│   ├── history/       # Historial local y en la nube de escaneos
+│   ├── map/           # Mapa de farmacias y clínicas cercanas
 │   └── settings/      # Tema, idioma, perfil
 └── shared/            # Widgets reutilizables
 ```
+
+---
+
+## ✅ Resultados de pruebas reales
+
+Datos reales, sin simular — ver `veri_farmac/test_results/` para la evidencia completa.
+
+| Prueba | Resultado |
+|---|---|
+| Pruebas unitarias | 55/55 pasando (`flutter test`), 97.6% de cobertura en los módulos cubiertos |
+| Verificación OCR + IA visual (piloto, n=16) | 81.3% de exactitud, F1 macro 75.0% |
+| Código de barras (piloto, n=7 productos reales) | 0/7 encontrados — limitación de datos externa, no del algoritmo (ver sección de APIs) |
+| Carga (JMeter, 20 usuarios concurrentes, 100 peticiones) | 0% de error, 133.9 ms de respuesta promedio, 9.98 peticiones/s |
 
 ---
 
@@ -228,5 +243,5 @@ flutter run --dart-define-from-file=env/dev.json
 ---
 
 <div align="center">
-  <sub>VeriPharmac v1.0.0 · 2025 · Desarrollado con Flutter</sub>
+  <sub>VeriFarmac · 2026 · Trabajo de grado, Universidad Cooperativa de Colombia, Campus Pasto</sub>
 </div>
