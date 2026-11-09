@@ -1,0 +1,47 @@
+@startuml fig02_despliegue
+title Diagrama de despliegue de VeriFarmac
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+' ===== Lo que corre en el celular =====
+node "Dispositivo Android\n(Android 8.0+ / API 26)" as Phone <<device>> {
+  artifact "VeriFarmac.apk\n(Flutter)" as App
+  component "Google ML Kit\n(OCR y código de barras)" as MLKit
+  database "Almacenamiento local\n(historial sin conexión)" as Local
+}
+
+' ===== Lo que corre en la nube =====
+node "Supabase (nube)" as Supabase <<cloud>> {
+  component "Auth" as SAuth
+  database "PostgreSQL\n(registros INVIMA, historial)" as DB
+  component "Edge Function\nanalizar-empaque" as EF_IA
+  component "Edge Function\nsincronizar-invima\n(semanal, pg_cron)" as EF_Sync
+}
+
+node "Google" as GoogleNode <<cloud>> {
+  component "Google Sign-In" as Google
+}
+
+node "Anthropic" as Anthropic <<cloud>> {
+  component "API de Claude" as Claude
+}
+
+node "datos.gov.co" as Gov <<cloud>> {
+  component "Datos abiertos\nINVIMA" as Invima
+}
+
+' ===== Comunicación dentro del celular =====
+App --> MLKit : usa (local)
+App --> Local : lee / guarda
+
+' ===== Comunicación por Internet =====
+App --> Google  : <<HTTPS>>
+App --> SAuth   : <<HTTPS>>
+App --> DB      : <<HTTPS>>
+App --> EF_IA   : <<HTTPS>>
+EF_IA --> Claude  : <<HTTPS>>
+EF_Sync --> Invima : <<HTTPS>>
+EF_Sync --> DB
+
+@enduml

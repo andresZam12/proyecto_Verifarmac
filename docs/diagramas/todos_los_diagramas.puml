@@ -1,0 +1,966 @@
+@startuml fig01_arquitectura
+title Arquitectura del sistema VeriFarmac (Clean Architecture)
+top to bottom direction
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+' ===== 1. Presentación: lo que el usuario ve =====
+package "Capa de Presentación (Flutter + Riverpod)" as PRES <<layer>> {
+  component "Pantallas\n(LoginPage, ScannerPage,\nHistoryPage, ...)" as Pages
+  component "Gestores de estado\n(Notifiers de Riverpod)" as Notifiers
+}
+
+' ===== 2. Dominio: las reglas del negocio =====
+package "Capa de Dominio (Dart puro)" as DOM <<layer>> {
+  component "Casos de uso\n(ScanByOcrUseCase,\nGetMedicineByRegistryUseCase, ...)" as UC
+  interface "Contratos de repositorio\n(IMedicineRepository, ...)" as Contratos
+  component "Entidades\n(Medicine, ScanResult,\nHistoryEntry, AppUser)" as Entidades
+}
+
+' ===== 3. Datos: cómo se obtiene la información =====
+package "Capa de Datos" as DATA <<layer>> {
+  component "Repositorios\n(MedicineRepositoryImpl, ...)" as Repos
+  component "Fuentes de datos\n(OcrDataSource, ClaudeAiDataSource,\nInvimaApiDataSource, ...)" as DS
+}
+
+' ===== 4. Servicios externos =====
+package "Servicios externos" as EXT <<external>> {
+  component "Google ML Kit\n(en el dispositivo)" as MLKit
+  component "Google Sign-In" as Google
+  package "Supabase" {
+    component "Auth" as SAuth
+    database "PostgreSQL" as DB
+    component "Edge Functions\n(analizar-empaque,\nsincronizar-invima)" as Edge
+  }
+  component "API de Claude" as Claude
+  component "datos.gov.co\n(INVIMA)" as Datos
+}
+
+' ===== Dependencias: todas apuntan hacia el dominio =====
+Pages     --> Notifiers
+Notifiers --> UC        : <<use>>
+UC        --> Contratos : <<use>>
+UC        --> Entidades
+Repos     .up.|> Contratos
+Repos     --> DS
+
+' ===== Conexiones con el exterior =====
+DS --> MLKit
+DS --> Google
+DS --> SAuth
+DS --> DB
+DS --> Edge
+Edge --> Claude
+Edge --> Datos
+Edge --> DB
+
+@enduml
+
+@startuml fig02_despliegue
+title Diagrama de despliegue de VeriFarmac
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+' ===== Lo que corre en el celular =====
+node "Dispositivo Android\n(Android 8.0+ / API 26)" as Phone <<device>> {
+  artifact "VeriFarmac.apk\n(Flutter)" as App
+  component "Google ML Kit\n(OCR y código de barras)" as MLKit
+  database "Almacenamiento local\n(historial sin conexión)" as Local
+}
+
+' ===== Lo que corre en la nube =====
+node "Supabase (nube)" as Supabase <<cloud>> {
+  component "Auth" as SAuth
+  database "PostgreSQL\n(registros INVIMA, historial)" as DB
+  component "Edge Function\nanalizar-empaque" as EF_IA
+  component "Edge Function\nsincronizar-invima\n(semanal, pg_cron)" as EF_Sync
+}
+
+node "Google" as GoogleNode <<cloud>> {
+  component "Google Sign-In" as Google
+}
+
+node "Anthropic" as Anthropic <<cloud>> {
+  component "API de Claude" as Claude
+}
+
+node "datos.gov.co" as Gov <<cloud>> {
+  component "Datos abiertos\nINVIMA" as Invima
+}
+
+' ===== Comunicación dentro del celular =====
+App --> MLKit : usa (local)
+App --> Local : lee / guarda
+
+' ===== Comunicación por Internet =====
+App --> Google  : <<HTTPS>>
+App --> SAuth   : <<HTTPS>>
+App --> DB      : <<HTTPS>>
+App --> EF_IA   : <<HTTPS>>
+EF_IA --> Claude  : <<HTTPS>>
+EF_Sync --> Invima : <<HTTPS>>
+EF_Sync --> DB
+
+@enduml
+
+@startuml fig03_ciclo_scrum
+title Ciclo de vida Scrum adaptado a VeriFarmac
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam rectangle {
+  RoundCorner 15
+}
+
+' ===== Las 5 fases del proyecto (de izquierda a derecha) =====
+rectangle "Fase 1\nPlanificación e\ninvestigación\n(OE-01)" as F1 #E3F2FD
+
+rectangle "Sprints de 2 semanas (5 a 7 en total)" as SPRINTS #FAFAFA {
+  rectangle "Fase 2\nDiseño\n(OE-02)" as F2 #FFF8E1
+  rectangle "Fase 3\nDesarrollo\niterativo\n(OE-03)" as F3 #FFF8E1
+  rectangle "Fase 4\nPruebas y\nvalidación\n(OE-04)" as F4 #FFF8E1
+}
+
+rectangle "Fase 5\nDocumentación,\nentrega y cierre" as F5 #E8F5E9
+
+F1 -right-> F2
+F2 -right-> F3
+F3 -right-> F4
+F4 -right-> F5
+
+' ===== Lo que pasa dentro de CADA sprint =====
+rectangle "Eventos de cada sprint" as CICLO #FFFFFF {
+  rectangle "1. Sprint Planning\n(elegir historias del\nProduct Backlog)" as E1
+  rectangle "2. Desarrollo\n+ Daily Scrum\n(asíncrono)" as E2
+  rectangle "3. Sprint Review\n(con el asesor)" as E3
+  rectangle "4. Sprint Retrospective\n(mejorar el proceso)" as E4
+}
+
+E1 -right-> E2
+E2 -down-> E3
+E3 -left-> E4
+E4 -up-> E1 : siguiente\nsprint
+
+SPRINTS .down.> CICLO : cada sprint\nsigue este ciclo
+
+@enduml
+
+@startuml fig05_casos_uso
+title Diagrama de casos de uso de VeriFarmac
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+
+' ===== Actores principales (izquierda) =====
+actor "Usuario" as U
+actor "Temporizador\nsemanal" as T <<sistema>>
+
+' ===== Límite del sistema =====
+rectangle "VeriFarmac" {
+  usecase "CU-01 Iniciar sesión\ncon Google" as CU01
+  usecase "CU-02 Cerrar sesión" as CU02
+  usecase "CU-06 Consultar historial" as CU06
+  usecase "CU-03 Verificar por\ncódigo de barras" as CU03
+  usecase "CU-04 Verificar por OCR" as CU04
+  usecase "CU-05 Verificar mediante\nanálisis visual con IA" as CU05
+  usecase "CU-09 Buscar producto\npor nombre" as CU09
+  usecase "Consultar registro\nsanitario" as CONS
+  usecase "CU-07 Reportar producto\nante el INVIMA" as CU07
+  usecase "CU-08 Sincronizar base\nregulatoria" as CU08
+}
+
+' ===== Actores secundarios (derecha) =====
+actor "Google" as G <<sistema>>
+actor "Servicio de IA\n(Claude)" as IA <<sistema>>
+actor "Portal datos.gov.co\n(INVIMA)" as INV <<sistema>>
+
+' ===== Usuario =====
+U --> CU01
+U --> CU02
+U --> CU06
+U --> CU03
+U --> CU04
+U --> CU05
+U --> CU09
+
+' ===== Reutilización: toda verificación consulta el registro =====
+CU03 ..> CONS : <<include>>
+CU04 ..> CONS : <<include>>
+CU05 ..> CONS : <<include>>
+CU09 ..> CONS : <<include>>
+
+' ===== Escalamiento entre mecanismos (solo si se cumple la condición) =====
+CU04 .[norank].> CU03 : <<extend>>\n[código no encontrado]
+CU05 .[norank].> CU04 : <<extend>>\n[OCR no concluyente]
+CU07 ..> CONS : <<extend>>\n[no encontrado\no sospechoso]
+
+' ===== Sistemas externos =====
+CU01 ---> G
+CU05 ---> IA
+T --> CU08
+CU08 ---> INV
+
+@enduml
+
+@startuml fig06_clases
+title Diagrama de clases de VeriFarmac
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ranksep 40
+skinparam nodesep 20
+skinparam linetype ortho
+hide empty members
+
+' =====================================================================
+'  CAPA DE PRESENTACIÓN: gestores de estado (Riverpod)
+' =====================================================================
+package "Capa de Presentación (Flutter + Riverpod)" <<layer>> {
+  class AuthNotifier <<StateNotifier>> #DCEBFA {
+    +signInWithGoogle(): void
+    +signOut(): void
+  }
+  class ScannerNotifier <<StateNotifier>> #DCEBFA {
+    +scanBarcode(barcode: String): void
+    +scanOcr(text: String): void
+    +analyzeImage(imagePath: String): void
+    +reset(): void
+  }
+  class MedicineNotifier <<StateNotifier>> #DCEBFA {
+    +loadByBarcode(barcode: String): void
+    +loadByRegistry(registry: String): void
+  }
+  class HistoryNotifier <<StateNotifier>> #DCEBFA {
+    +load(): void
+    +delete(id: String): void
+    +deleteAll(): void
+    +filterBy(status: String): void
+    +sync(userId: String): void
+  }
+  class DashboardNotifier <<StateNotifier>> #DCEBFA {
+    +load(): void
+  }
+
+  class AuthState #DCEBFA {
+    +status: AuthStatus
+    +user: AppUser [0..1]
+    +error: String [0..1]
+  }
+  class ScannerState #DCEBFA {
+    +status: ScannerStatus
+    +result: ScanResult [0..1]
+    +error: String [0..1]
+  }
+  class MedicineState #DCEBFA {
+    +status: MedicineStatus
+    +medicine: Medicine [0..1]
+    +error: String [0..1]
+  }
+  class HistoryState #DCEBFA {
+    +entries: List<HistoryEntry>
+    +isLoading: bool
+    +filter: String [0..1]
+  }
+  class DashboardState #DCEBFA {
+    +stats: Map<String, int>
+    +isLoading: bool
+  }
+}
+
+' =====================================================================
+'  CAPA DE DOMINIO: reglas del negocio (Dart puro)
+' =====================================================================
+package "Capa de Dominio (Dart puro)" <<layer>> {
+
+  package "Casos de uso" {
+    package "Autenticación" as UC_AUTH {
+      class SignInWithGoogleUseCase #FFF3CD {
+        +call(): void
+      }
+      class SignOutUseCase #FFF3CD {
+        +call(): void
+      }
+    }
+    package "Escaneo" as UC_SCAN {
+      class ScanByBarcodeUseCase #FFF3CD {
+        +call(barcode): ScanResult
+      }
+      class ScanByOcrUseCase #FFF3CD {
+        +call(text): ScanResult
+      }
+      class AnalyzeImageUseCase #FFF3CD {
+        +call(imagePath): ScanResult
+      }
+    }
+    package "Consulta INVIMA" as UC_MED {
+      class GetMedicineByRegistryUseCase #FFF3CD {
+        +call(registry): Medicine
+      }
+      class GetMedicineByBarcodeUseCase #FFF3CD {
+        +call(barcode): Medicine
+      }
+      class SearchMedicineUseCase #FFF3CD {
+        +call(query): List<Medicine>
+      }
+    }
+    package "Historial" as UC_HIST {
+      class FetchHistoryUseCase #FFF3CD {
+        +call(page): List<HistoryEntry>
+      }
+      class SaveHistoryEntryUseCase #FFF3CD {
+        +call(entry): void
+      }
+      class DeleteHistoryEntryUseCase #FFF3CD {
+        +call(id): void
+      }
+      class SyncHistoryUseCase #FFF3CD {
+        +call(userId): void
+      }
+      class GetStatsUseCase #FFF3CD {
+        +call(): Map<String, int>
+      }
+    }
+  }
+
+  package "Contratos de repositorio" {
+    interface IAuthRepository #FFF3CD {
+      +usuarioActual: AppUser [0..1]
+      +signInWithGoogle(): void
+      +signOut(): void
+    }
+    interface IScannerRepository #FFF3CD {
+      +processBarcode(barcode: String): ScanResult
+      +processOcr(text: String): ScanResult
+      +analyzeImage(imagePath: String): ScanResult
+    }
+    interface IMedicineRepository #FFF3CD {
+      +findByBarcode(barcode: String): Medicine
+      +findByRegistry(registry: String): Medicine
+      +search(query: String): List<Medicine>
+    }
+    interface IHistoryRepository #FFF3CD {
+      +save(entry: HistoryEntry): void
+      +fetch(page: int): List<HistoryEntry>
+      +delete(id: String): void
+      +deleteAll(): void
+      +sync(userId: String): void
+      +getStatistics(): Map<String, int>
+    }
+  }
+
+  package "Entidades" {
+    class AppUser #FFF3CD {
+      +id: String
+      +email: String
+      +nombre: String [0..1]
+      +avatarUrl: String [0..1]
+    }
+    class ScanResult #FFF3CD {
+      +id: String
+      +scannedValue: String
+      +method: ScanMethod
+      +scannedAt: DateTime
+      +confidence: double
+      +medicineName: String [0..1]
+      +sanitaryRecord: String [0..1]
+      +status: String [0..1]
+      +error: String [0..1]
+    }
+    class Medicine #FFF3CD {
+      +id: String
+      +name: String
+      +sanitaryRecord: String
+      +laboratory: String
+      +condition: MedicineCondition
+      +holder: String [0..1]
+      +activeIngredient: String [0..1]
+      +concentration: String [0..1]
+      +pharmaceuticalForm: String [0..1]
+    }
+    class HistoryEntry #FFF3CD {
+      +id: String
+      +medicineName: String
+      +sanitaryRecord: String
+      +status: String
+      +method: String
+      +createdAt: DateTime
+      +laboratory: String [0..1]
+      +confidence: double
+      +synced: bool
+    }
+    enum ScanMethod #FFF3CD {
+      barcode
+      ocr
+      visual
+    }
+    enum MedicineCondition #FFF3CD {
+      valid
+      expired
+      invalid
+      suspicious
+      unknown
+    }
+  }
+}
+
+' =====================================================================
+'  CAPA DE DATOS: implementaciones, fuentes de datos y modelos
+' =====================================================================
+package "Capa de Datos" <<layer>> {
+
+  package "Repositorios" {
+    class AuthRepositoryImpl #DDF2E3 {
+      -dataSource: AuthRemoteDataSource
+    }
+    class ScannerRepositoryImpl #DDF2E3 {
+      -invima: InvimaApiDataSource
+      -ocr: OcrDataSource
+      -claude: ClaudeAiDataSource
+      -extractInvimaCode(text): String
+      -extractExpiryDate(text): DateTime
+      -isExpired(date): bool
+    }
+    class MedicineRepositoryImpl #DDF2E3 {
+      -datasource: InvimaApiDataSource
+    }
+    class HistoryRepositoryImpl #DDF2E3 {
+      -local: HistoryLocalDataSource
+      -remote: HistoryRemoteDataSource
+    }
+  }
+
+  package "Fuentes de datos" {
+    class AuthRemoteDataSource <<Supabase Auth>> #DDF2E3 {
+      +signInWithGoogle(): void
+      +signOut(): void
+    }
+    class OcrDataSource <<ML Kit>> #DDF2E3 {
+      +extractText(imagePath): String
+    }
+    class ClaudeAiDataSource <<Edge Function>> #DDF2E3 {
+      +analyzePackaging(imagePath): Map
+    }
+    class InvimaApiDataSource <<Supabase>> #DDF2E3 {
+      +findByRegistry(registry): MedicineModel
+      +findByBarcode(barcode): MedicineModel
+      +search(query): List<MedicineModel>
+    }
+    class HistoryLocalDataSource <<SharedPreferences>> #DDF2E3 {
+      +save(entry): void
+      +fetch(page): List<HistoryEntryModel>
+      +fetchUnsynced(): List<HistoryEntryModel>
+      +markSynced(id): void
+    }
+    class HistoryRemoteDataSource <<Supabase>> #DDF2E3 {
+      +uploadEntries(entries): void
+      +downloadHistory(userId): List<HistoryEntryModel>
+      +delete(id): void
+    }
+  }
+
+  package "Modelos (DTO)" {
+    class AppUserModel #DDF2E3 {
+      +fromSupabase(json): AppUserModel {static}
+    }
+    class ScanResultModel #DDF2E3 {
+      +fromJson(json): ScanResultModel {static}
+      +toJson(): Map
+    }
+    class MedicineModel #DDF2E3 {
+      +fromJson(json): MedicineModel {static}
+      +toJson(): Map
+    }
+    class HistoryEntryModel #DDF2E3 {
+      +fromJson(json): HistoryEntryModel {static}
+      +toJson(): Map
+    }
+  }
+}
+
+' =====================================================================
+'  RELACIONES
+' =====================================================================
+
+' Presentación: cada Notifier contiene su estado (composición)
+AuthNotifier *-- "1" AuthState
+ScannerNotifier *-- "1" ScannerState
+MedicineNotifier *-- "1" MedicineState
+HistoryNotifier *-- "1" HistoryState
+DashboardNotifier *-- "1" DashboardState
+
+' Presentación → Casos de uso: cada Notifier usa el grupo de casos de uso de su módulo
+AuthNotifier --> UC_AUTH : <<use>>
+ScannerNotifier --> UC_SCAN : <<use>>
+MedicineNotifier --> UC_MED : <<use>>
+HistoryNotifier --> UC_HIST : <<use>>
+DashboardNotifier --> UC_HIST : <<use>>
+
+' Casos de uso → Contratos: cada grupo depende de un solo contrato
+UC_AUTH --> IAuthRepository : <<use>>
+UC_SCAN --> IScannerRepository : <<use>>
+UC_MED --> IMedicineRepository : <<use>>
+UC_HIST --> IHistoryRepository : <<use>>
+
+' Contratos → Entidades
+IAuthRepository ..> AppUser
+IScannerRepository ..> ScanResult
+IMedicineRepository ..> Medicine
+IHistoryRepository ..> HistoryEntry
+
+' Relaciones entre entidades
+AppUser "1" -- "0..*" HistoryEntry : registra >
+ScanResult "0..*" -- "0..1" Medicine : corresponde a >
+ScanResult --> "1" ScanMethod
+Medicine --> "1" MedicineCondition
+
+' Datos: cada repositorio cumple (realiza) un contrato del dominio
+IAuthRepository <|.. AuthRepositoryImpl
+IScannerRepository <|.. ScannerRepositoryImpl
+IMedicineRepository <|.. MedicineRepositoryImpl
+IHistoryRepository <|.. HistoryRepositoryImpl
+
+' Datos: repositorios → fuentes de datos
+AuthRepositoryImpl --> "1" AuthRemoteDataSource
+ScannerRepositoryImpl --> "1" OcrDataSource
+ScannerRepositoryImpl --> "1" ClaudeAiDataSource
+ScannerRepositoryImpl --> "1" InvimaApiDataSource
+MedicineRepositoryImpl --> "1" InvimaApiDataSource
+HistoryRepositoryImpl --> "1" HistoryLocalDataSource
+HistoryRepositoryImpl --> "1" HistoryRemoteDataSource
+
+' Datos: quién crea cada modelo
+AuthRemoteDataSource ..> AppUserModel : <<create>>
+ScannerRepositoryImpl ..> ScanResultModel : <<create>>
+InvimaApiDataSource ..> MedicineModel : <<create>>
+HistoryLocalDataSource ..> HistoryEntryModel
+HistoryRemoteDataSource ..> HistoryEntryModel
+
+' Datos: cada modelo hereda de su entidad
+AppUser <|-- AppUserModel
+ScanResult <|-- ScanResultModel
+Medicine <|-- MedicineModel
+HistoryEntry <|-- HistoryEntryModel
+
+' --- Acomodo (no se dibuja) ---
+SignOutUseCase -[hidden]down- ScanByOcrUseCase
+ScanByOcrUseCase -[hidden]down- GetMedicineByBarcodeUseCase
+GetMedicineByBarcodeUseCase -[hidden]down- SaveHistoryEntryUseCase
+MedicineCondition -[hidden]down- MedicineRepositoryImpl
+HistoryEntry -[hidden]down- HistoryRepositoryImpl
+AuthState -[hidden]down- SignInWithGoogleUseCase
+HistoryState -[hidden]down- SignInWithGoogleUseCase
+
+FetchHistoryUseCase -[hidden]down- IAuthRepository
+SaveHistoryEntryUseCase -[hidden]down- IScannerRepository
+DeleteHistoryEntryUseCase -[hidden]down- IMedicineRepository
+SyncHistoryUseCase -[hidden]down- IHistoryRepository
+
+legend right
+  |<#DCEBFA> Presentación |
+  |<#FFF3CD> Dominio |
+  |<#DDF2E3> Datos |
+endlegend
+
+@enduml
+
+@startuml fig07_secuencia_ocr
+title Diagrama de secuencia de la verificación por OCR (CU-04)
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 130
+skinparam ParticipantPadding 2
+skinparam BoxPadding 4
+autonumber
+hide footbox
+
+' ===== Participantes agrupados por capa (mismos colores de la Figura 6) =====
+actor Usuario as U
+box "Presentación" #DCEBFA
+  participant ":Scanner\nPage" as Page
+  participant ":Scanner\nNotifier" as Notif
+end box
+box "Dominio" #FFF3CD
+  participant ":ScanByOcr\nUseCase" as UCOcr
+  participant ":AnalyzeImage\nUseCase" as UCIa
+end box
+box "Datos" #DDF2E3
+  participant ":Ocr\nDataSource\n«ML Kit»" as Ocr
+  participant ":Scanner\nRepositoryImpl" as Repo
+  participant ":InvimaApi\nDataSource" as Inv
+  participant ":ClaudeAi\nDataSource" as Cl
+  participant ":HistoryLocal\nDataSource" as Hist
+end box
+box "Servicios\nexternos" #EEEEEE
+  database "Supabase\n(BD + Edge\nFunction)" as SB
+end box
+
+' ===== 1. Captura y reconocimiento de texto (en el dispositivo) =====
+U -> Page ++ : Pulsa "Escanear"\n(modo texto)
+Page -> Page : takePicture()
+Page -> Ocr ++ : extractText(imagePath)
+Ocr --> Page -- : texto
+
+alt no se detectó texto
+  Page --> U : "No se detectó texto.\nMejore la iluminación"
+else hay texto
+  ' ===== 2. Verificación contra la base regulatoria =====
+  Page -> Notif ++ : scanOcr(texto)
+  Notif -> UCOcr ++ : call(texto)
+  UCOcr -> Repo ++ : processOcr(texto)
+  Repo -> Repo : extractInvimaCode(texto)\nextractExpiryDate(texto)
+  alt se reconoce el número de registro
+    Repo -> Inv ++ : findByRegistry(registro)
+  else no se reconoce el registro
+    Repo -> Inv : search(texto)
+  end
+  Inv -> SB ++ : consulta registros\nINVIMA
+  SB --> Inv -- : filas
+  Inv --> Repo -- : MedicineModel\no null
+  Repo -> Repo : isExpired(fecha)
+  note right of Repo
+    La fecha de vencimiento
+    impresa en el empaque
+    tiene prioridad sobre el
+    estado del registro.
+  end note
+  Repo --> UCOcr -- : ScanResult
+  UCOcr --> Notif -- : ScanResult
+  Notif --> Page -- : nuevo estado\n(success / error)
+
+  ' ===== 3. Resultado y registro en el historial =====
+  alt registro encontrado
+    Page -> Hist ++ : save(entrada)
+    Hist --> Page --
+    Page --> U : Resultado (vigente /\nvencido) + aviso\nde alcance
+  else registro no encontrado
+    Page -> Hist ++ : save(no_encontrado)
+    Hist --> Page --
+    Page --> U : "No encontrado" +\nenlace al INVIMA\n(CU-07)
+
+    ' ===== 4. Flujo alterno: análisis visual con IA (CU-05) =====
+    opt el usuario solicita el análisis visual con IA
+      U -> Page : Pulsa "Analizar\ncon IA"
+      Page -> Notif ++ : analyzeImage(imagePath)
+      Notif -> UCIa ++ : call(imagePath)
+      UCIa -> Repo ++ : analyzeImage(imagePath)
+      Repo -> Cl ++ : analyzePackaging(imagePath)
+      Cl -> SB ++ : POST /analizar-empaque
+      SB -> SB : invoca la API\nde Claude
+      SB --> Cl -- : JSON (registro,\nvencimiento,\nobservaciones)
+      Cl --> Repo -- : datos extraídos
+      Repo -> Inv ++ : findByRegistry(registro)
+      Inv -> SB ++ : consulta registros\nINVIMA
+      SB --> Inv -- : filas
+      Inv --> Repo -- : MedicineModel\no null
+      Repo --> UCIa -- : ScanResult
+      UCIa --> Notif -- : ScanResult
+      Notif --> Page -- : nuevo estado
+      Page --> U : Resultado o\n"Potencialmente\nsospechoso" +\naviso de alcance
+    end
+  end
+end
+deactivate Page
+
+@enduml
+
+@startuml fig08_proceso_verificacion
+title Diagrama de actividades del proceso de verificación
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityDiamondBackgroundColor #FFF3CD
+skinparam SwimlaneTitleFontStyle bold
+
+|#FFFFFF|Usuario|
+|#DCEBFA|Aplicación móvil|
+|#F2F2F2|Supabase (BD + Edge Function)|
+|#E6E6E6|Servicio de IA (Claude)|
+
+' ===== 1. Primer mecanismo: código de barras =====
+|Usuario|
+start
+:Abrir el escáner y
+enfocar el empaque;
+|Aplicación móvil|
+:Leer el código de barras
+(ML Kit, en el dispositivo);
+|Supabase (BD + Edge Function)|
+:Buscar el registro
+asociado al código;
+|Aplicación móvil|
+if (¿Registro encontrado\npor código de barras?) then (sí)
+else (no)
+
+  ' ===== 2. Segundo mecanismo: OCR =====
+  |Usuario|
+  :Fotografiar el texto
+  del empaque;
+  |Aplicación móvil|
+  :Extraer el texto
+  (ML Kit OCR);
+  :Identificar número de registro
+  y fecha de vencimiento;
+  |Supabase (BD + Edge Function)|
+  :Consultar el registro
+  por número o por nombre;
+  |Aplicación móvil|
+  if (¿Registro encontrado?) then (sí)
+  else (no)
+
+    ' ===== 3. Tercer mecanismo: análisis visual con IA =====
+    |Usuario|
+    if (¿Solicita el análisis\nvisual con IA?) then (no)
+      |Aplicación móvil|
+      :Resultado: **No encontrado**
+      + enlace al INVIMA;
+      stop
+    else (sí)
+      |Supabase (BD + Edge Function)|
+      :Enviar la imagen a la
+      Edge Function;
+      |Servicio de IA (Claude)|
+      :Analizar el empaque y
+      extraer registro, vencimiento
+      y observaciones;
+      |Supabase (BD + Edge Function)|
+      :Consultar el registro
+      extraído por la IA;
+      |Aplicación móvil|
+      if (¿Registro encontrado?) then (sí)
+      else (no)
+        if (¿La IA detectó\nanomalías visuales?) then (sí)
+          :Resultado: **Potencialmente**
+          **sospechoso** + enlace al INVIMA;
+          stop
+        else (no)
+          :Resultado: **Información**
+          **insuficiente**;
+          stop
+        endif
+      endif
+    endif
+  endif
+endif
+
+' ===== 4. Evaluación contra el registro oficial =====
+|Aplicación móvil|
+:Comparar la fecha impresa en el
+empaque con el estado del registro;
+if (¿Registro vigente y\nproducto no vencido?) then (sí)
+  :Resultado: **Vigente**;
+  stop
+else (no)
+  :Resultado: **Vencido o**
+  **suspendido**;
+  stop
+endif
+
+floating note left
+  En todos los resultados la aplicación
+  guarda la consulta en el historial (RF014)
+  y muestra el aviso de alcance (RF012).
+  La vigencia siempre se decide con los
+  datos del INVIMA, no con la IA.
+end note
+
+@enduml
+
+@startdot fig09_entidad_relacion
+graph ER {
+  // Modelo entidad-relación de VeriFarmac en notación de Chen
+  //   Rectángulo        = entidad
+  //   Rectángulo doble  = entidad débil
+  //   Óvalo             = atributo (subrayado = clave)
+  //   Rombo             = relación (rombo doble = relación identificadora)
+  layout=neato; overlap=false; splines=true; sep="+12";
+  fontname="Arial"; fontsize=20; labelloc=t;
+  label=<<b>Modelo entidad-relación de VeriFarmac</b><br/><font point-size="12">Notación de Chen</font><br/><br/>>;
+
+  node [fontname="Arial", fontsize=12, fontcolor="white", style=filled, penwidth=0];
+  edge [fontname="Arial", fontsize=13, color="#555555", style=dashed];
+
+  // ===== Entidades =====
+  node [shape=box, fillcolor="#E8862A", fontsize=14, width=1.9, height=0.55];
+  USUARIO           [label=<<b>USUARIO</b>>];
+  CONSULTA          [label=<<b>CONSULTA</b>>];
+  REGISTRO          [label=<<b>REGISTRO<br/>SANITARIO</b>>];
+  CODIGO            [label=<<b>CÓDIGO DE<br/>BARRAS</b>>];
+  SINCRONIZACION    [label=<<b>SINCRONIZACIÓN</b>>];
+  USO_IA            [label=<<b>USO DIARIO<br/>DE IA</b>>, peripheries=2, color="#E8862A", penwidth=1.5];
+
+  // ===== Relaciones =====
+  node [shape=diamond, fillcolor="#7B3F8C", fontsize=12, width=1.6, height=0.9];
+  REGISTRA      [label=<<b>Registra</b>>];
+  CORRESPONDE   [label=<<b>Corresponde</b>>];
+  IDENTIFICA    [label=<<b>Identifica</b>>];
+  ACTUALIZA     [label=<<b>Actualiza</b>>];
+  CONSUME       [label=<<b>Consume</b>>, peripheries=2, color="#7B3F8C", penwidth=1.5];
+
+  // ===== Atributos =====
+  node [shape=ellipse, fillcolor="#1A9BD7", fontsize=11, width=1.3, height=0.5];
+
+  u_id     [label=<<u>id</u>>];
+  u_email  [label="email"];
+  u_nombre [label="nombre"];
+  u_avatar [label="avatar_url"];
+
+  c_id     [label=<<u>id</u>>];
+  c_nombre [label="nombre_\nmedicamento"];
+  c_estado [label="estado"];
+  c_metodo [label="método"];
+  c_conf   [label="confianza"];
+  c_fecha  [label="creado_en"];
+
+  r_num    [label=<<u>registro_<br/>sanitario</u>>];
+  r_prod   [label="producto"];
+  r_tit    [label="titular"];
+  r_pa     [label="principio_\nactivo"];
+  r_forma  [label="forma_\nfarmacéutica"];
+  r_estado [label="estado_\nregistro"];
+  r_venc   [label="fecha_\nvencimiento"];
+  r_tipo   [label="tipo_\nproducto"];
+
+  cb_cod   [label=<<u>código</u>>];
+
+  s_id     [label=<<u>id</u>>];
+  s_ini    [label="iniciada_en"];
+  s_fin    [label="finalizada_en"];
+  s_estado [label="estado"];
+  s_cant   [label="registros_\nprocesados"];
+
+  ia_fecha [label=<<u>fecha</u>>];
+  ia_cant  [label="cantidad"];
+
+  // ===== Entidad — atributos =====
+  USUARIO -- {u_id u_email u_nombre u_avatar};
+  CONSULTA -- {c_id c_nombre c_estado c_metodo c_conf c_fecha};
+  REGISTRO -- {r_num r_prod r_tit r_pa r_forma r_estado r_venc r_tipo};
+  CODIGO -- cb_cod;
+  SINCRONIZACION -- {s_id s_ini s_fin s_estado s_cant};
+  USO_IA -- {ia_fecha ia_cant};
+
+  // ===== Entidad — relación — entidad (con cardinalidad) =====
+  edge [style=solid, color="#222222", penwidth=1.4, len=1.8];
+  USUARIO  -- REGISTRA    [taillabel="1"];
+  REGISTRA -- CONSULTA    [headlabel="N"];
+  CONSULTA -- CORRESPONDE [taillabel="N"];
+  CORRESPONDE -- REGISTRO [headlabel="1"];
+  CODIGO   -- IDENTIFICA  [taillabel="N"];
+  IDENTIFICA -- REGISTRO  [headlabel="1"];
+  SINCRONIZACION -- ACTUALIZA [taillabel="1"];
+  ACTUALIZA -- REGISTRO   [headlabel="N"];
+  USUARIO  -- CONSUME     [taillabel="1"];
+  CONSUME  -- USO_IA      [headlabel="N"];
+}
+@enddot
+
+@startuml fig09b_modelo_relacional
+title Modelo relacional (lógico) de la base de datos en Supabase / PostgreSQL
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam ranksep 60
+hide circle
+set separator none
+hide empty members
+
+' Notación: * = obligatorio (NOT NULL), <<PK>> clave primaria, <<FK>> clave foránea
+
+' =====================================================================
+'  DATOS REGULATORIOS: solo lectura para la app, sincronizados desde datos.gov.co
+' =====================================================================
+package "Datos regulatorios (solo lectura, sincronizados desde datos.gov.co)" {
+
+  entity "sincronizacion_invima" as sync #F2F2F2 {
+    * id : bigserial <<PK>>
+    --
+    * iniciada_en : timestamptz
+    finalizada_en : timestamptz
+    * estado : text
+    registros_procesados : integer
+    mensaje_error : text
+  }
+
+  entity "registro_sanitario" as reg #FFF3CD {
+    * registro_sanitario : text <<PK>>
+    --
+    * expediente : text
+    * producto : text
+    * titular : text
+    laboratorio : text
+    principio_activo : text
+    concentracion : text
+    forma_farmaceutica : text
+    * estado_registro : text
+    fecha_vencimiento : date
+    * tipo_producto : text
+    * sincronizacion_id : bigint <<FK>>
+  }
+
+  entity "codigo_barras_registro" as cb #FFF3CD {
+    * codigo_barras : text <<PK>>
+    --
+    * registro_sanitario : text <<FK>>
+  }
+}
+
+' =====================================================================
+'  DATOS DE USUARIO: protegidos con políticas de seguridad a nivel de fila (RLS)
+' =====================================================================
+package "Datos de usuario (protegidos con RLS)" {
+
+  entity "auth.users\n(Supabase Auth)" as usr #DCEBFA {
+    * id : uuid <<PK>>
+    --
+    * email : text
+    nombre : text
+    avatar_url : text
+    * creado_en : timestamptz
+  }
+
+  entity "scan_history" as hist #DCEBFA {
+    * id : text <<PK>>
+    --
+    * user_id : uuid <<FK>>
+    registro_sanitario : text <<FK>>
+    * nombre_medicamento : text
+    * estado : text
+    * metodo : text
+    laboratorio : text
+    * confianza : numeric
+    * creado_en : timestamptz
+  }
+
+  entity "uso_ia_diario" as ia #DCEBFA {
+    * user_id : uuid <<PK, FK>>
+    * fecha : date <<PK>>
+    --
+    * cantidad : integer
+  }
+}
+
+' =====================================================================
+'  RELACIONES (notación pata de gallo)
+' =====================================================================
+sync ||--o{ reg : actualiza
+reg ||--o{ cb : se identifica por
+usr ||--o{ hist : registra
+reg |o--o{ hist : corresponde a
+usr ||--o{ ia : consume
+
+legend right
+  **Notación**
+  <U+25CF> = campo obligatorio (NOT NULL)
+  ""||"" = exactamente uno
+  ""|o"" = cero o uno
+  ""o{"" = cero o muchos
+endlegend
+
+@enduml

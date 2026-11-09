@@ -1,0 +1,104 @@
+@startuml fig09b_modelo_relacional
+title Modelo relacional (lógico) de la base de datos en Supabase / PostgreSQL
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam ranksep 60
+hide circle
+set separator none
+hide empty members
+
+' Notación: * = obligatorio (NOT NULL), <<PK>> clave primaria, <<FK>> clave foránea
+
+' =====================================================================
+'  DATOS REGULATORIOS: solo lectura para la app, sincronizados desde datos.gov.co
+' =====================================================================
+package "Datos regulatorios (solo lectura, sincronizados desde datos.gov.co)" {
+
+  entity "sincronizacion_invima" as sync #F2F2F2 {
+    * id : bigserial <<PK>>
+    --
+    * iniciada_en : timestamptz
+    finalizada_en : timestamptz
+    * estado : text
+    registros_procesados : integer
+    mensaje_error : text
+  }
+
+  entity "registro_sanitario" as reg #FFF3CD {
+    * registro_sanitario : text <<PK>>
+    --
+    * expediente : text
+    * producto : text
+    * titular : text
+    laboratorio : text
+    principio_activo : text
+    concentracion : text
+    forma_farmaceutica : text
+    * estado_registro : text
+    fecha_vencimiento : date
+    * tipo_producto : text
+    * sincronizacion_id : bigint <<FK>>
+  }
+
+  entity "codigo_barras_registro" as cb #FFF3CD {
+    * codigo_barras : text <<PK>>
+    --
+    * registro_sanitario : text <<FK>>
+  }
+}
+
+' =====================================================================
+'  DATOS DE USUARIO: protegidos con políticas de seguridad a nivel de fila (RLS)
+' =====================================================================
+package "Datos de usuario (protegidos con RLS)" {
+
+  entity "auth.users\n(Supabase Auth)" as usr #DCEBFA {
+    * id : uuid <<PK>>
+    --
+    * email : text
+    nombre : text
+    avatar_url : text
+    * creado_en : timestamptz
+  }
+
+  entity "scan_history" as hist #DCEBFA {
+    * id : text <<PK>>
+    --
+    * user_id : uuid <<FK>>
+    registro_sanitario : text <<FK>>
+    * nombre_medicamento : text
+    * estado : text
+    * metodo : text
+    laboratorio : text
+    * confianza : numeric
+    * creado_en : timestamptz
+  }
+
+  entity "uso_ia_diario" as ia #DCEBFA {
+    * user_id : uuid <<PK, FK>>
+    * fecha : date <<PK>>
+    --
+    * cantidad : integer
+  }
+}
+
+' =====================================================================
+'  RELACIONES (notación pata de gallo)
+' =====================================================================
+sync ||--o{ reg : actualiza
+reg ||--o{ cb : se identifica por
+usr ||--o{ hist : registra
+reg |o--o{ hist : corresponde a
+usr ||--o{ ia : consume
+
+legend right
+  **Notación**
+  <U+25CF> = campo obligatorio (NOT NULL)
+  ""||"" = exactamente uno
+  ""|o"" = cero o uno
+  ""o{"" = cero o muchos
+endlegend
+
+@enduml

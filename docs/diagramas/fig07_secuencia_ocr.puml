@@ -1,0 +1,101 @@
+@startuml fig07_secuencia_ocr
+title Diagrama de secuencia de la verificación por OCR (CU-04)
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 130
+skinparam ParticipantPadding 2
+skinparam BoxPadding 4
+autonumber
+hide footbox
+
+' ===== Participantes agrupados por capa (mismos colores de la Figura 6) =====
+actor Usuario as U
+box "Presentación" #DCEBFA
+  participant ":Scanner\nPage" as Page
+  participant ":Scanner\nNotifier" as Notif
+end box
+box "Dominio" #FFF3CD
+  participant ":ScanByOcr\nUseCase" as UCOcr
+  participant ":AnalyzeImage\nUseCase" as UCIa
+end box
+box "Datos" #DDF2E3
+  participant ":Ocr\nDataSource\n«ML Kit»" as Ocr
+  participant ":Scanner\nRepositoryImpl" as Repo
+  participant ":InvimaApi\nDataSource" as Inv
+  participant ":ClaudeAi\nDataSource" as Cl
+  participant ":HistoryLocal\nDataSource" as Hist
+end box
+box "Servicios\nexternos" #EEEEEE
+  database "Supabase\n(BD + Edge\nFunction)" as SB
+end box
+
+' ===== 1. Captura y reconocimiento de texto (en el dispositivo) =====
+U -> Page ++ : Pulsa "Escanear"\n(modo texto)
+Page -> Page : takePicture()
+Page -> Ocr ++ : extractText(imagePath)
+Ocr --> Page -- : texto
+
+alt no se detectó texto
+  Page --> U : "No se detectó texto.\nMejore la iluminación"
+else hay texto
+  ' ===== 2. Verificación contra la base regulatoria =====
+  Page -> Notif ++ : scanOcr(texto)
+  Notif -> UCOcr ++ : call(texto)
+  UCOcr -> Repo ++ : processOcr(texto)
+  Repo -> Repo : extractInvimaCode(texto)\nextractExpiryDate(texto)
+  alt se reconoce el número de registro
+    Repo -> Inv ++ : findByRegistry(registro)
+  else no se reconoce el registro
+    Repo -> Inv : search(texto)
+  end
+  Inv -> SB ++ : consulta registros\nINVIMA
+  SB --> Inv -- : filas
+  Inv --> Repo -- : MedicineModel\no null
+  Repo -> Repo : isExpired(fecha)
+  note right of Repo
+    La fecha de vencimiento
+    impresa en el empaque
+    tiene prioridad sobre el
+    estado del registro.
+  end note
+  Repo --> UCOcr -- : ScanResult
+  UCOcr --> Notif -- : ScanResult
+  Notif --> Page -- : nuevo estado\n(success / error)
+
+  ' ===== 3. Resultado y registro en el historial =====
+  alt registro encontrado
+    Page -> Hist ++ : save(entrada)
+    Hist --> Page --
+    Page --> U : Resultado (vigente /\nvencido) + aviso\nde alcance
+  else registro no encontrado
+    Page -> Hist ++ : save(no_encontrado)
+    Hist --> Page --
+    Page --> U : "No encontrado" +\nenlace al INVIMA\n(CU-07)
+
+    ' ===== 4. Flujo alterno: análisis visual con IA (CU-05) =====
+    opt el usuario solicita el análisis visual con IA
+      U -> Page : Pulsa "Analizar\ncon IA"
+      Page -> Notif ++ : analyzeImage(imagePath)
+      Notif -> UCIa ++ : call(imagePath)
+      UCIa -> Repo ++ : analyzeImage(imagePath)
+      Repo -> Cl ++ : analyzePackaging(imagePath)
+      Cl -> SB ++ : POST /analizar-empaque
+      SB -> SB : invoca la API\nde Claude
+      SB --> Cl -- : JSON (registro,\nvencimiento,\nobservaciones)
+      Cl --> Repo -- : datos extraídos
+      Repo -> Inv ++ : findByRegistry(registro)
+      Inv -> SB ++ : consulta registros\nINVIMA
+      SB --> Inv -- : filas
+      Inv --> Repo -- : MedicineModel\no null
+      Repo --> UCIa -- : ScanResult
+      UCIa --> Notif -- : ScanResult
+      Notif --> Page -- : nuevo estado
+      Page --> U : Resultado o\n"Potencialmente\nsospechoso" +\naviso de alcance
+    end
+  end
+end
+deactivate Page
+
+@enduml

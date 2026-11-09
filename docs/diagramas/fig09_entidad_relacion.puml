@@ -1,0 +1,88 @@
+@startdot fig09_entidad_relacion
+graph ER {
+  // Modelo entidad-relación de VeriFarmac en notación de Chen
+  //   Rectángulo        = entidad
+  //   Rectángulo doble  = entidad débil
+  //   Óvalo             = atributo (subrayado = clave)
+  //   Rombo             = relación (rombo doble = relación identificadora)
+  layout=neato; overlap=false; splines=true; sep="+12";
+  fontname="Arial"; fontsize=20; labelloc=t;
+  label=<<b>Modelo entidad-relación de VeriFarmac</b><br/><font point-size="12">Notación de Chen</font><br/><br/>>;
+
+  node [fontname="Arial", fontsize=12, fontcolor="white", style=filled, penwidth=0];
+  edge [fontname="Arial", fontsize=13, color="#555555", style=dashed];
+
+  // ===== Entidades =====
+  node [shape=box, fillcolor="#E8862A", fontsize=14, width=1.9, height=0.55];
+  USUARIO           [label=<<b>USUARIO</b>>];
+  CONSULTA          [label=<<b>CONSULTA</b>>];
+  REGISTRO          [label=<<b>REGISTRO<br/>SANITARIO</b>>];
+  CODIGO            [label=<<b>CÓDIGO DE<br/>BARRAS</b>>];
+  SINCRONIZACION    [label=<<b>SINCRONIZACIÓN</b>>];
+  USO_IA            [label=<<b>USO DIARIO<br/>DE IA</b>>, peripheries=2, color="#E8862A", penwidth=1.5];
+
+  // ===== Relaciones =====
+  node [shape=diamond, fillcolor="#7B3F8C", fontsize=12, width=1.6, height=0.9];
+  REGISTRA      [label=<<b>Registra</b>>];
+  CORRESPONDE   [label=<<b>Corresponde</b>>];
+  IDENTIFICA    [label=<<b>Identifica</b>>];
+  ACTUALIZA     [label=<<b>Actualiza</b>>];
+  CONSUME       [label=<<b>Consume</b>>, peripheries=2, color="#7B3F8C", penwidth=1.5];
+
+  // ===== Atributos =====
+  node [shape=ellipse, fillcolor="#1A9BD7", fontsize=11, width=1.3, height=0.5];
+
+  u_id     [label=<<u>id</u>>];
+  u_email  [label="email"];
+  u_nombre [label="nombre"];
+  u_avatar [label="avatar_url"];
+
+  c_id     [label=<<u>id</u>>];
+  c_nombre [label="nombre_\nmedicamento"];
+  c_estado [label="estado"];
+  c_metodo [label="método"];
+  c_conf   [label="confianza"];
+  c_fecha  [label="creado_en"];
+
+  r_num    [label=<<u>registro_<br/>sanitario</u>>];
+  r_prod   [label="producto"];
+  r_tit    [label="titular"];
+  r_pa     [label="principio_\nactivo"];
+  r_forma  [label="forma_\nfarmacéutica"];
+  r_estado [label="estado_\nregistro"];
+  r_venc   [label="fecha_\nvencimiento"];
+  r_tipo   [label="tipo_\nproducto"];
+
+  cb_cod   [label=<<u>código</u>>];
+
+  s_id     [label=<<u>id</u>>];
+  s_ini    [label="iniciada_en"];
+  s_fin    [label="finalizada_en"];
+  s_estado [label="estado"];
+  s_cant   [label="registros_\nprocesados"];
+
+  ia_fecha [label=<<u>fecha</u>>];
+  ia_cant  [label="cantidad"];
+
+  // ===== Entidad — atributos =====
+  USUARIO -- {u_id u_email u_nombre u_avatar};
+  CONSULTA -- {c_id c_nombre c_estado c_metodo c_conf c_fecha};
+  REGISTRO -- {r_num r_prod r_tit r_pa r_forma r_estado r_venc r_tipo};
+  CODIGO -- cb_cod;
+  SINCRONIZACION -- {s_id s_ini s_fin s_estado s_cant};
+  USO_IA -- {ia_fecha ia_cant};
+
+  // ===== Entidad — relación — entidad (con cardinalidad) =====
+  edge [style=solid, color="#222222", penwidth=1.4, len=1.8];
+  USUARIO  -- REGISTRA    [taillabel="1"];
+  REGISTRA -- CONSULTA    [headlabel="N"];
+  CONSULTA -- CORRESPONDE [taillabel="N"];
+  CORRESPONDE -- REGISTRO [headlabel="1"];
+  CODIGO   -- IDENTIFICA  [taillabel="N"];
+  IDENTIFICA -- REGISTRO  [headlabel="1"];
+  SINCRONIZACION -- ACTUALIZA [taillabel="1"];
+  ACTUALIZA -- REGISTRO   [headlabel="N"];
+  USUARIO  -- CONSUME     [taillabel="1"];
+  CONSUME  -- USO_IA      [headlabel="N"];
+}
+@enddot

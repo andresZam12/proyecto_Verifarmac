@@ -1,0 +1,101 @@
+@startuml fig08_proceso_verificacion
+title Diagrama de actividades del proceso de verificación
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityDiamondBackgroundColor #FFF3CD
+skinparam SwimlaneTitleFontStyle bold
+
+|#FFFFFF|Usuario|
+|#DCEBFA|Aplicación móvil|
+|#F2F2F2|Supabase (BD + Edge Function)|
+|#E6E6E6|Servicio de IA (Claude)|
+
+' ===== 1. Primer mecanismo: código de barras =====
+|Usuario|
+start
+:Abrir el escáner y
+enfocar el empaque;
+|Aplicación móvil|
+:Leer el código de barras
+(ML Kit, en el dispositivo);
+|Supabase (BD + Edge Function)|
+:Buscar el registro
+asociado al código;
+|Aplicación móvil|
+if (¿Registro encontrado\npor código de barras?) then (sí)
+else (no)
+
+  ' ===== 2. Segundo mecanismo: OCR =====
+  |Usuario|
+  :Fotografiar el texto
+  del empaque;
+  |Aplicación móvil|
+  :Extraer el texto
+  (ML Kit OCR);
+  :Identificar número de registro
+  y fecha de vencimiento;
+  |Supabase (BD + Edge Function)|
+  :Consultar el registro
+  por número o por nombre;
+  |Aplicación móvil|
+  if (¿Registro encontrado?) then (sí)
+  else (no)
+
+    ' ===== 3. Tercer mecanismo: análisis visual con IA =====
+    |Usuario|
+    if (¿Solicita el análisis\nvisual con IA?) then (no)
+      |Aplicación móvil|
+      :Resultado: **No encontrado**
+      + enlace al INVIMA;
+      stop
+    else (sí)
+      |Supabase (BD + Edge Function)|
+      :Enviar la imagen a la
+      Edge Function;
+      |Servicio de IA (Claude)|
+      :Analizar el empaque y
+      extraer registro, vencimiento
+      y observaciones;
+      |Supabase (BD + Edge Function)|
+      :Consultar el registro
+      extraído por la IA;
+      |Aplicación móvil|
+      if (¿Registro encontrado?) then (sí)
+      else (no)
+        if (¿La IA detectó\nanomalías visuales?) then (sí)
+          :Resultado: **Potencialmente**
+          **sospechoso** + enlace al INVIMA;
+          stop
+        else (no)
+          :Resultado: **Información**
+          **insuficiente**;
+          stop
+        endif
+      endif
+    endif
+  endif
+endif
+
+' ===== 4. Evaluación contra el registro oficial =====
+|Aplicación móvil|
+:Comparar la fecha impresa en el
+empaque con el estado del registro;
+if (¿Registro vigente y\nproducto no vencido?) then (sí)
+  :Resultado: **Vigente**;
+  stop
+else (no)
+  :Resultado: **Vencido o**
+  **suspendido**;
+  stop
+endif
+
+floating note left
+  En todos los resultados la aplicación
+  guarda la consulta en el historial (RF014)
+  y muestra el aviso de alcance (RF012).
+  La vigencia siempre se decide con los
+  datos del INVIMA, no con la IA.
+end note
+
+@enduml
