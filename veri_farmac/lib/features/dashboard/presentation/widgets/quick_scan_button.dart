@@ -1,4 +1,4 @@
-﻿// BotÃ³n principal para abrir el scanner directamente desde el dashboard.
+﻿// Botón principal para abrir el scanner directamente desde el dashboard.
 import 'package:flutter/material.dart';
 import '../../../../core/utils/extensions/context_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
