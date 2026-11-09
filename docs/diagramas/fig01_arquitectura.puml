@@ -1,0 +1,59 @@
+@startuml fig01_arquitectura
+title Arquitectura del sistema VeriFarmac (Clean Architecture)
+top to bottom direction
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+' ===== 1. Presentación: lo que el usuario ve =====
+package "Capa de Presentación (Flutter + Riverpod)" as PRES <<layer>> {
+  component "Pantallas\n(LoginPage, ScannerPage,\nHistoryPage, ...)" as Pages
+  component "Gestores de estado\n(Notifiers de Riverpod)" as Notifiers
+}
+
+' ===== 2. Dominio: las reglas del negocio =====
+package "Capa de Dominio (Dart puro)" as DOM <<layer>> {
+  component "Casos de uso\n(ScanByOcrUseCase,\nGetMedicineByRegistryUseCase, ...)" as UC
+  interface "Contratos de repositorio\n(IMedicineRepository, ...)" as Contratos
+  component "Entidades\n(Medicine, ScanResult,\nHistoryEntry, AppUser)" as Entidades
+}
+
+' ===== 3. Datos: cómo se obtiene la información =====
+package "Capa de Datos" as DATA <<layer>> {
+  component "Repositorios\n(MedicineRepositoryImpl, ...)" as Repos
+  component "Fuentes de datos\n(OcrDataSource, ClaudeAiDataSource,\nInvimaApiDataSource, ...)" as DS
+}
+
+' ===== 4. Servicios externos =====
+package "Servicios externos" as EXT <<external>> {
+  component "Google ML Kit\n(en el dispositivo)" as MLKit
+  component "Google Sign-In" as Google
+  package "Supabase" {
+    component "Auth" as SAuth
+    database "PostgreSQL" as DB
+    component "Edge Functions\n(analizar-empaque,\nsincronizar-invima)" as Edge
+  }
+  component "API de Claude" as Claude
+  component "datos.gov.co\n(INVIMA)" as Datos
+}
+
+' ===== Dependencias: todas apuntan hacia el dominio =====
+Pages     --> Notifiers
+Notifiers --> UC        : <<use>>
+UC        --> Contratos : <<use>>
+UC        --> Entidades
+Repos     .up.|> Contratos
+Repos     --> DS
+
+' ===== Conexiones con el exterior =====
+DS --> MLKit
+DS --> Google
+DS --> SAuth
+DS --> DB
+DS --> Edge
+Edge --> Claude
+Edge --> Datos
+Edge --> DB
+
+@enduml

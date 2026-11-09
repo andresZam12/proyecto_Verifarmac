@@ -1,0 +1,57 @@
+@startuml fig05_casos_uso
+title Diagrama de casos de uso de VeriFarmac
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam packageStyle rectangle
+
+' ===== Actores principales (izquierda) =====
+actor "Usuario" as U
+actor "Temporizador\nsemanal" as T <<sistema>>
+
+' ===== Límite del sistema =====
+rectangle "VeriFarmac" {
+  usecase "CU-01 Iniciar sesión\ncon Google" as CU01
+  usecase "CU-02 Cerrar sesión" as CU02
+  usecase "CU-06 Consultar historial" as CU06
+  usecase "CU-03 Verificar por\ncódigo de barras" as CU03
+  usecase "CU-04 Verificar por OCR" as CU04
+  usecase "CU-05 Verificar mediante\nanálisis visual con IA" as CU05
+  usecase "CU-09 Buscar producto\npor nombre" as CU09
+  usecase "Consultar registro\nsanitario" as CONS
+  usecase "CU-07 Reportar producto\nante el INVIMA" as CU07
+  usecase "CU-08 Sincronizar base\nregulatoria" as CU08
+}
+
+' ===== Actores secundarios (derecha) =====
+actor "Google" as G <<sistema>>
+actor "Servicio de IA\n(Claude)" as IA <<sistema>>
+actor "Portal datos.gov.co\n(INVIMA)" as INV <<sistema>>
+
+' ===== Usuario =====
+U --> CU01
+U --> CU02
+U --> CU06
+U --> CU03
+U --> CU04
+U --> CU05
+U --> CU09
+
+' ===== Reutilización: toda verificación consulta el registro =====
+CU03 ..> CONS : <<include>>
+CU04 ..> CONS : <<include>>
+CU05 ..> CONS : <<include>>
+CU09 ..> CONS : <<include>>
+
+' ===== Escalamiento entre mecanismos (solo si se cumple la condición) =====
+CU04 .[norank].> CU03 : <<extend>>\n[código no encontrado]
+CU05 .[norank].> CU04 : <<extend>>\n[OCR no concluyente]
+CU07 ..> CONS : <<extend>>\n[no encontrado\no sospechoso]
+
+' ===== Sistemas externos =====
+CU01 ---> G
+CU05 ---> IA
+T --> CU08
+CU08 ---> INV
+
+@enduml

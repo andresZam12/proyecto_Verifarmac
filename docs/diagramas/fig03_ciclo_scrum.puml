@@ -1,0 +1,40 @@
+@startuml fig03_ciclo_scrum
+title Ciclo de vida Scrum adaptado a VeriFarmac
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam rectangle {
+  RoundCorner 15
+}
+
+' ===== Las 5 fases del proyecto (de izquierda a derecha) =====
+rectangle "Fase 1\nPlanificación e\ninvestigación\n(OE-01)" as F1 #E3F2FD
+
+rectangle "Sprints de 2 semanas (5 a 7 en total)" as SPRINTS #FAFAFA {
+  rectangle "Fase 2\nDiseño\n(OE-02)" as F2 #FFF8E1
+  rectangle "Fase 3\nDesarrollo\niterativo\n(OE-03)" as F3 #FFF8E1
+  rectangle "Fase 4\nPruebas y\nvalidación\n(OE-04)" as F4 #FFF8E1
+}
+
+rectangle "Fase 5\nDocumentación,\nentrega y cierre" as F5 #E8F5E9
+
+F1 -right-> F2
+F2 -right-> F3
+F3 -right-> F4
+F4 -right-> F5
+
+' ===== Lo que pasa dentro de CADA sprint =====
+rectangle "Eventos de cada sprint" as CICLO #FFFFFF {
+  rectangle "1. Sprint Planning\n(elegir historias del\nProduct Backlog)" as E1
+  rectangle "2. Desarrollo\n+ Daily Scrum\n(asíncrono)" as E2
+  rectangle "3. Sprint Review\n(con el asesor)" as E3
+  rectangle "4. Sprint Retrospective\n(mejorar el proceso)" as E4
+}
+
+E1 -right-> E2
+E2 -down-> E3
+E3 -left-> E4
+E4 -up-> E1 : siguiente\nsprint
+
+SPRINTS .down.> CICLO : cada sprint\nsigue este ciclo
+
+@enduml

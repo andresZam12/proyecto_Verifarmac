@@ -1,0 +1,361 @@
+@startuml fig06_clases
+title Diagrama de clases de VeriFarmac
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ranksep 40
+skinparam nodesep 20
+skinparam linetype ortho
+hide empty members
+
+' =====================================================================
+'  CAPA DE PRESENTACIÓN: gestores de estado (Riverpod)
+' =====================================================================
+package "Capa de Presentación (Flutter + Riverpod)" <<layer>> {
+  class AuthNotifier <<StateNotifier>> #DCEBFA {
+    +signInWithGoogle(): void
+    +signOut(): void
+  }
+  class ScannerNotifier <<StateNotifier>> #DCEBFA {
+    +scanBarcode(barcode: String): void
+    +scanOcr(text: String): void
+    +analyzeImage(imagePath: String): void
+    +reset(): void
+  }
+  class MedicineNotifier <<StateNotifier>> #DCEBFA {
+    +loadByBarcode(barcode: String): void
+    +loadByRegistry(registry: String): void
+  }
+  class HistoryNotifier <<StateNotifier>> #DCEBFA {
+    +load(): void
+    +delete(id: String): void
+    +deleteAll(): void
+    +filterBy(status: String): void
+    +sync(userId: String): void
+  }
+  class DashboardNotifier <<StateNotifier>> #DCEBFA {
+    +load(): void
+  }
+
+  class AuthState #DCEBFA {
+    +status: AuthStatus
+    +user: AppUser [0..1]
+    +error: String [0..1]
+  }
+  class ScannerState #DCEBFA {
+    +status: ScannerStatus
+    +result: ScanResult [0..1]
+    +error: String [0..1]
+  }
+  class MedicineState #DCEBFA {
+    +status: MedicineStatus
+    +medicine: Medicine [0..1]
+    +error: String [0..1]
+  }
+  class HistoryState #DCEBFA {
+    +entries: List<HistoryEntry>
+    +isLoading: bool
+    +filter: String [0..1]
+  }
+  class DashboardState #DCEBFA {
+    +stats: Map<String, int>
+    +isLoading: bool
+  }
+}
+
+' =====================================================================
+'  CAPA DE DOMINIO: reglas del negocio (Dart puro)
+' =====================================================================
+package "Capa de Dominio (Dart puro)" <<layer>> {
+
+  package "Casos de uso" {
+    package "Autenticación" as UC_AUTH {
+      class SignInWithGoogleUseCase #FFF3CD {
+        +call(): void
+      }
+      class SignOutUseCase #FFF3CD {
+        +call(): void
+      }
+    }
+    package "Escaneo" as UC_SCAN {
+      class ScanByBarcodeUseCase #FFF3CD {
+        +call(barcode): ScanResult
+      }
+      class ScanByOcrUseCase #FFF3CD {
+        +call(text): ScanResult
+      }
+      class AnalyzeImageUseCase #FFF3CD {
+        +call(imagePath): ScanResult
+      }
+    }
+    package "Consulta INVIMA" as UC_MED {
+      class GetMedicineByRegistryUseCase #FFF3CD {
+        +call(registry): Medicine
+      }
+      class GetMedicineByBarcodeUseCase #FFF3CD {
+        +call(barcode): Medicine
+      }
+      class SearchMedicineUseCase #FFF3CD {
+        +call(query): List<Medicine>
+      }
+    }
+    package "Historial" as UC_HIST {
+      class FetchHistoryUseCase #FFF3CD {
+        +call(page): List<HistoryEntry>
+      }
+      class SaveHistoryEntryUseCase #FFF3CD {
+        +call(entry): void
+      }
+      class DeleteHistoryEntryUseCase #FFF3CD {
+        +call(id): void
+      }
+      class SyncHistoryUseCase #FFF3CD {
+        +call(userId): void
+      }
+      class GetStatsUseCase #FFF3CD {
+        +call(): Map<String, int>
+      }
+    }
+  }
+
+  package "Contratos de repositorio" {
+    interface IAuthRepository #FFF3CD {
+      +usuarioActual: AppUser [0..1]
+      +signInWithGoogle(): void
+      +signOut(): void
+    }
+    interface IScannerRepository #FFF3CD {
+      +processBarcode(barcode: String): ScanResult
+      +processOcr(text: String): ScanResult
+      +analyzeImage(imagePath: String): ScanResult
+    }
+    interface IMedicineRepository #FFF3CD {
+      +findByBarcode(barcode: String): Medicine
+      +findByRegistry(registry: String): Medicine
+      +search(query: String): List<Medicine>
+    }
+    interface IHistoryRepository #FFF3CD {
+      +save(entry: HistoryEntry): void
+      +fetch(page: int): List<HistoryEntry>
+      +delete(id: String): void
+      +deleteAll(): void
+      +sync(userId: String): void
+      +getStatistics(): Map<String, int>
+    }
+  }
+
+  package "Entidades" {
+    class AppUser #FFF3CD {
+      +id: String
+      +email: String
+      +nombre: String [0..1]
+      +avatarUrl: String [0..1]
+    }
+    class ScanResult #FFF3CD {
+      +id: String
+      +scannedValue: String
+      +method: ScanMethod
+      +scannedAt: DateTime
+      +confidence: double
+      +medicineName: String [0..1]
+      +sanitaryRecord: String [0..1]
+      +status: String [0..1]
+      +error: String [0..1]
+    }
+    class Medicine #FFF3CD {
+      +id: String
+      +name: String
+      +sanitaryRecord: String
+      +laboratory: String
+      +condition: MedicineCondition
+      +holder: String [0..1]
+      +activeIngredient: String [0..1]
+      +concentration: String [0..1]
+      +pharmaceuticalForm: String [0..1]
+    }
+    class HistoryEntry #FFF3CD {
+      +id: String
+      +medicineName: String
+      +sanitaryRecord: String
+      +status: String
+      +method: String
+      +createdAt: DateTime
+      +laboratory: String [0..1]
+      +confidence: double
+      +synced: bool
+    }
+    enum ScanMethod #FFF3CD {
+      barcode
+      ocr
+      visual
+    }
+    enum MedicineCondition #FFF3CD {
+      valid
+      expired
+      invalid
+      suspicious
+      unknown
+    }
+  }
+}
+
+' =====================================================================
+'  CAPA DE DATOS: implementaciones, fuentes de datos y modelos
+' =====================================================================
+package "Capa de Datos" <<layer>> {
+
+  package "Repositorios" {
+    class AuthRepositoryImpl #DDF2E3 {
+      -dataSource: AuthRemoteDataSource
+    }
+    class ScannerRepositoryImpl #DDF2E3 {
+      -invima: InvimaApiDataSource
+      -ocr: OcrDataSource
+      -claude: ClaudeAiDataSource
+      -extractInvimaCode(text): String
+      -extractExpiryDate(text): DateTime
+      -isExpired(date): bool
+    }
+    class MedicineRepositoryImpl #DDF2E3 {
+      -datasource: InvimaApiDataSource
+    }
+    class HistoryRepositoryImpl #DDF2E3 {
+      -local: HistoryLocalDataSource
+      -remote: HistoryRemoteDataSource
+    }
+  }
+
+  package "Fuentes de datos" {
+    class AuthRemoteDataSource <<Supabase Auth>> #DDF2E3 {
+      +signInWithGoogle(): void
+      +signOut(): void
+    }
+    class OcrDataSource <<ML Kit>> #DDF2E3 {
+      +extractText(imagePath): String
+    }
+    class ClaudeAiDataSource <<Edge Function>> #DDF2E3 {
+      +analyzePackaging(imagePath): Map
+    }
+    class InvimaApiDataSource <<Supabase>> #DDF2E3 {
+      +findByRegistry(registry): MedicineModel
+      +findByBarcode(barcode): MedicineModel
+      +search(query): List<MedicineModel>
+    }
+    class HistoryLocalDataSource <<SharedPreferences>> #DDF2E3 {
+      +save(entry): void
+      +fetch(page): List<HistoryEntryModel>
+      +fetchUnsynced(): List<HistoryEntryModel>
+      +markSynced(id): void
+    }
+    class HistoryRemoteDataSource <<Supabase>> #DDF2E3 {
+      +uploadEntries(entries): void
+      +downloadHistory(userId): List<HistoryEntryModel>
+      +delete(id): void
+    }
+  }
+
+  package "Modelos (DTO)" {
+    class AppUserModel #DDF2E3 {
+      +fromSupabase(json): AppUserModel {static}
+    }
+    class ScanResultModel #DDF2E3 {
+      +fromJson(json): ScanResultModel {static}
+      +toJson(): Map
+    }
+    class MedicineModel #DDF2E3 {
+      +fromJson(json): MedicineModel {static}
+      +toJson(): Map
+    }
+    class HistoryEntryModel #DDF2E3 {
+      +fromJson(json): HistoryEntryModel {static}
+      +toJson(): Map
+    }
+  }
+}
+
+' =====================================================================
+'  RELACIONES
+' =====================================================================
+
+' Presentación: cada Notifier contiene su estado (composición)
+AuthNotifier *-- "1" AuthState
+ScannerNotifier *-- "1" ScannerState
+MedicineNotifier *-- "1" MedicineState
+HistoryNotifier *-- "1" HistoryState
+DashboardNotifier *-- "1" DashboardState
+
+' Presentación → Casos de uso: cada Notifier usa el grupo de casos de uso de su módulo
+AuthNotifier --> UC_AUTH : <<use>>
+ScannerNotifier --> UC_SCAN : <<use>>
+MedicineNotifier --> UC_MED : <<use>>
+HistoryNotifier --> UC_HIST : <<use>>
+DashboardNotifier --> UC_HIST : <<use>>
+
+' Casos de uso → Contratos: cada grupo depende de un solo contrato
+UC_AUTH --> IAuthRepository : <<use>>
+UC_SCAN --> IScannerRepository : <<use>>
+UC_MED --> IMedicineRepository : <<use>>
+UC_HIST --> IHistoryRepository : <<use>>
+
+' Contratos → Entidades
+IAuthRepository ..> AppUser
+IScannerRepository ..> ScanResult
+IMedicineRepository ..> Medicine
+IHistoryRepository ..> HistoryEntry
+
+' Relaciones entre entidades
+AppUser "1" -- "0..*" HistoryEntry : registra >
+ScanResult "0..*" -- "0..1" Medicine : corresponde a >
+ScanResult --> "1" ScanMethod
+Medicine --> "1" MedicineCondition
+
+' Datos: cada repositorio cumple (realiza) un contrato del dominio
+IAuthRepository <|.. AuthRepositoryImpl
+IScannerRepository <|.. ScannerRepositoryImpl
+IMedicineRepository <|.. MedicineRepositoryImpl
+IHistoryRepository <|.. HistoryRepositoryImpl
+
+' Datos: repositorios → fuentes de datos
+AuthRepositoryImpl --> "1" AuthRemoteDataSource
+ScannerRepositoryImpl --> "1" OcrDataSource
+ScannerRepositoryImpl --> "1" ClaudeAiDataSource
+ScannerRepositoryImpl --> "1" InvimaApiDataSource
+MedicineRepositoryImpl --> "1" InvimaApiDataSource
+HistoryRepositoryImpl --> "1" HistoryLocalDataSource
+HistoryRepositoryImpl --> "1" HistoryRemoteDataSource
+
+' Datos: quién crea cada modelo
+AuthRemoteDataSource ..> AppUserModel : <<create>>
+ScannerRepositoryImpl ..> ScanResultModel : <<create>>
+InvimaApiDataSource ..> MedicineModel : <<create>>
+HistoryLocalDataSource ..> HistoryEntryModel
+HistoryRemoteDataSource ..> HistoryEntryModel
+
+' Datos: cada modelo hereda de su entidad
+AppUser <|-- AppUserModel
+ScanResult <|-- ScanResultModel
+Medicine <|-- MedicineModel
+HistoryEntry <|-- HistoryEntryModel
+
+' --- Acomodo (no se dibuja) ---
+SignOutUseCase -[hidden]down- ScanByOcrUseCase
+ScanByOcrUseCase -[hidden]down- GetMedicineByBarcodeUseCase
+GetMedicineByBarcodeUseCase -[hidden]down- SaveHistoryEntryUseCase
+MedicineCondition -[hidden]down- MedicineRepositoryImpl
+HistoryEntry -[hidden]down- HistoryRepositoryImpl
+AuthState -[hidden]down- SignInWithGoogleUseCase
+HistoryState -[hidden]down- SignInWithGoogleUseCase
+
+FetchHistoryUseCase -[hidden]down- IAuthRepository
+SaveHistoryEntryUseCase -[hidden]down- IScannerRepository
+DeleteHistoryEntryUseCase -[hidden]down- IMedicineRepository
+SyncHistoryUseCase -[hidden]down- IHistoryRepository
+
+legend right
+  |<#DCEBFA> Presentación |
+  |<#FFF3CD> Dominio |
+  |<#DDF2E3> Datos |
+endlegend
+
+@enduml
