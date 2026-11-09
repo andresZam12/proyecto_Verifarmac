@@ -10,7 +10,7 @@
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android)](https://android.com)
 [![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)](veri_farmac/test)
 
-[📥 Descargar APK v1.0.0](https://github.com/andresZam12/proyecto_Verifarmac/releases/download/v1.0.0/app-release.apk)
+[📥 Descargar APK v1.1.0](https://github.com/andresZam12/proyecto_Verifarmac/releases/download/v1.1.0/VeriFarmac-v1.1.0.apk)
 
 </div>
 
@@ -26,7 +26,7 @@ VeriFarmac es una aplicación móvil Android que permite verificar si un medicam
 
 1. Descarga el APK desde el botón de arriba o directamente aquí:
    ```
-   https://github.com/andresZam12/proyecto_Verifarmac/releases/download/v1.0.0/app-release.apk
+   https://github.com/andresZam12/proyecto_Verifarmac/releases/download/v1.1.0/VeriFarmac-v1.1.0.apk
    ```
 2. En tu Android ve a **Ajustes → Seguridad → Fuentes desconocidas** y actívalo
 3. Abre el archivo `.apk` descargado y sigue los pasos
